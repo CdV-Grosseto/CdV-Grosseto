@@ -1,5 +1,5 @@
 // Aggiornato a v49 - modifica al logo iniziale
-const CACHE_NAME = 'cdv-grosseto-v49';
+const CACHE_NAME = 'cdv-grosseto-v50';
 const ASSETS = [
   './',
   './index.html',
@@ -37,6 +37,7 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
 
 
 
