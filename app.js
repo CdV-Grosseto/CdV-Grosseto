@@ -1281,10 +1281,25 @@ function deleteGroup(id) {
 }
 
 function deleteUser(id) {
-    showConfirm("Elimina Utente", "Sei sicuro di voler rimuovere questo utente dal sistema?", async () => {
-        const { error } = await supabase.from('profiles').delete().eq('id', id);
-        if (error) showMessage("Errore", error.message, 'error');
-        else showMessage("Fatto", "Utente eliminato.", 'success');
+    showConfirm("Elimina Utente", "Sei sicuro di voler rimuovere questo utente (Login e Profilo)?", async () => {
+        // Usa la funzione RPC per cancellare auth.users e public.profiles
+        const { error } = await supabase.rpc('delete_user_complete', { target_id: id });
+
+        if (error) {
+            console.error(error);
+            // Fallback: se la funzione non esiste ancora o fallisce, prova a cancellare solo il profilo
+            const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
+            
+            if (profileError) {
+                showMessage("Errore", error.message, 'error');
+            } else {
+                showMessage("Attenzione", "Cancellato solo il profilo. Esegui la query SQL su Supabase per abilitare la cancellazione completa.", 'info');
+                loadUsers();
+            }
+        } else {
+            showMessage("Fatto", "Utente eliminato definitivamente.", 'success');
+            loadUsers();
+        }
     });
 }
 
