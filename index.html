@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>C.d.V Grosseto</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FCD34D">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* UI Mirino */
+        #location-picker-ui {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1000;
+        }
+        .picker-controls {
+            position: absolute; bottom: 30px; left: 0; width: 100%; text-align: center; pointer-events: auto;
+        }
+        .instruction-box {
+            background: rgba(255,255,255,0.95); 
+            padding: 10px 20px; 
+            border-radius: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border: 2px solid var(--primary);
+            color: var(--dark);
+        }
+        .btn-confirm-pos {
+            background: var(--dark); color: white; padding: 15px 40px; border-radius: 30px; border: none; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 1.1rem;
+            display: none; cursor: pointer;
+        }
+        /* Toggle Auth */
+        .auth-toggle { margin-top: 15px; font-size: 0.9rem; cursor: pointer; text-decoration: underline; color: var(--dark); }
+        
+        /* Policy Link Style */
+        .policy-link {
+            font-size: 0.8rem; color: #666; text-decoration: underline; cursor: pointer; margin-top: 20px; display: inline-block;
+        }
+        .disclaimer-box {
+            font-size: 0.75rem; color: #555; background: #FFFBEB; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #FCD34D; line-height: 1.3;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        
+        <nav id="navbar">
+            <!-- BANNER INSTALLAZIONE PWA -->
+            <div id="pwa-install-banner" onclick="installPWA()" style="display:none;">
+                <span class="material-icons">download</span>
+                <span>Installa App C.d.V</span>
+            </div>
+
+            <div class="nav-content">
+                <span class="nav-title">C.d.V Grosseto</span>
+                
+                <!-- Contenitore Utente & Logout -->
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="nav-user-name" style="font-size:0.9rem; font-weight:500; display:none"></span>
+                    <button id="btn-logout" class="btn-text" style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="handleLogout()">Esci</button>
+                </div>
+            </div>
+            <div id="nav-tabs" class="tabs" style="display:none">
+                <button class="tab active" onclick="switchTab('map')">Mappa</button>
+                <button class="tab" onclick="switchTab('list')">Bacheca</button>
+                <button class="tab" id="tab-users" style="display:none" onclick="switchTab('users')">Gestione</button>
+            </div>
+        </nav>
+
+        <!-- VISTA LOGIN / REGISTRAZIONE -->
+        <section id="view-login" class="view active">
+            <div class="login-container">
+                <!-- LOGO AGGIORNATO -->
+                <img src="logo.png" class="logo-img" alt="Logo C.d.V" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <!-- Fallback se manca l'immagine -->
+                <div class="logo-circle" style="display:none">C.d.V</div>
+                
+                <!-- LOGIN FORM -->
+                <div id="form-login">
+                    <!-- TESTI AGGIORNATI -->
+                    <h2>Benvenuti</h2>
+                    <p class="login-subtitle">Gruppi del vicinato Grosseto</p>
+                    
+                    <form onsubmit="event.preventDefault(); handleLogin();">
+                        <input type="email" id="email" placeholder="Email" required>
+                        <input type="password" id="password" placeholder="Password" required>
+                        <button type="submit" class="btn-primary">Accedi</button>
+                    </form>
+                    <p class="auth-toggle" onclick="toggleAuthMode('signup')">Non hai un account? <b>Registrati</b></p>
+                </div>
+
+                <!-- SIGNUP FORM -->
+                <div id="form-signup" style="display:none">
+                    <h2>Nuova Registrazione</h2>
+                    <p style="font-size:0.8rem; margin-bottom:10px">Inserisci i tuoi dati per unirti al C.d.V.</p>
+                    <form onsubmit="event.preventDefault(); handleSignUp();">
+                        <input type="text" id="signup-name" placeholder="Nome e Cognome" required>
+                        <input type="email" id="signup-email" placeholder="Email" required>
+                        <input type="password" id="signup-password" placeholder="Crea Password (min 6 car.)" required>
+                        <button type="submit" class="btn-primary" style="background: var(--primary-dark)">Registrati</button>
+                    </form>
+                    <p class="auth-toggle" onclick="toggleAuthMode('login')">Hai già un account? <b>Accedi</b></p>
+                </div>
+
+                <!-- DISCLAIMER & POLICY -->
+                <div class="disclaimer-box">
+                    ⚠️ <b>ATTENZIONE:</b> L'applicazione è ad uso esclusivo delle persone autorizzate e facenti parte del C.d.V. (Controllo del Vicinato). Ogni abuso sarà segnalato.
+                </div>
+                <div class="policy-link" onclick="openPolicyModal()">Privacy Policy & Termini d'Uso</div>
+
+            </div>
+        </section>
+
+        <!-- VISTA MAPPA -->
+        <section id="view-map" class="view" style="display:none">
+            
+            <!-- NUOVA BARRA DI RICERCA -->
+            <div class="map-search-bar">
+                <span class="material-icons">search</span>
+                <input type="text" id="map-search-input" placeholder="Cerca (targa, via, colore...)" oninput="handleSearch(this.value)">
+                <span class="material-icons" style="font-size:1.2rem; cursor:pointer;" onclick="clearSearch()" id="clear-search-btn" hidden>close</span>
+            </div>
+
+            <div class="filters-bar">
+                <button class="filter-chip active" data-filter="all" onclick="applyFilter('all')">Tutti</button>
+                <!-- NUOVO FILTRO TEMPOREALE -->
+                <button class="filter-chip date-filter-btn" onclick="toggleDateFilter()">📅 Tutto</button>
+                
+                <button class="filter-chip" data-filter="sospetto" onclick="applyFilter('sospetto')">👁️ Sospetti</button>
+                <button class="filter-chip" data-filter="degrado" onclick="applyFilter('degrado')">💡 Degrado</button>
+                <button class="filter-chip" data-filter="assistenza" onclick="applyFilter('assistenza')">🤝 Aiuto</button>
+                <button class="filter-chip" data-filter="nuova" onclick="applyFilter('nuova')">⚠️ Da Validare</button>
+            </div>
+
+            <button id="btn-open-stats" class="btn-stats" style="display:none" onclick="openStatsModal()">
+                <span class="material-icons">analytics</span>
+            </button>
+
+            <div id="map"></div>
+            
+            <div id="location-picker-ui">
+                <div class="picker-controls">
+                    <div id="picker-instruction" class="instruction-box">Tocca un punto sulla mappa</div><br>
+                    <button id="btn-confirm-pos" class="btn-confirm-pos" onclick="confirmLocation()">✅ CONFERMA</button>
+                    <button class="btn-secondary" style="width: auto; margin-top: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);" onclick="cancelLocationPick()">Annulla</button>
+                </div>
+            </div>
+
+            <button class="map-control-btn locate-btn" onclick="locateMe()">
+                <span class="material-icons">my_location</span>
+            </button>
+
+            <!-- TASTO TOGGLE MARKER GRUPPI (SOLO ADMIN) -->
+            <button id="btn-toggle-groups" class="map-control-btn groups-toggle-btn" style="display:none" onclick="toggleGroupMarkers()">
+                <span class="material-icons">flag</span>
+            </button>
+        </section>
+
+        <!-- VISTA BACHECA -->
+        <section id="view-list" class="view" style="display:none">
+            <!-- BARRA FILTRI STATICA PER LA LISTA -->
+            <div class="filters-bar-static">
+                <button class="filter-chip active" data-filter="all" onclick="applyFilter('all')">Tutti</button>
+                <button class="filter-chip date-filter-btn" onclick="toggleDateFilter()">📅 Tutto</button>
+                
+                <button class="filter-chip" data-filter="sospetto" onclick="applyFilter('sospetto')">👁️ Sospetti</button>
+                <button class="filter-chip" data-filter="degrado" onclick="applyFilter('degrado')">💡 Degrado</button>
+                <button class="filter-chip" data-filter="assistenza" onclick="applyFilter('assistenza')">🤝 Aiuto</button>
+                <button class="filter-chip" data-filter="nuova" onclick="applyFilter('nuova')">⚠️ Da Validare</button>
+            </div>
+
+            <div id="dossier-bar" class="dossier-toolbar" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span id="dossier-count" style="font-weight:bold; color:var(--dark);">0 Selezionati</span>
+                    <div style="display:flex; gap:10px;">
+                         <button class="btn-small btn-secondary" onclick="toggleDossierMode()">Annulla</button>
+                         <button class="btn-small btn-primary" onclick="openDossierModal()">📄 Genera PDF</button>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-start-dossier" class="fab-dossier" style="display:none" onclick="toggleDossierMode()">
+                <span class="material-icons">assignment</span>
+            </button>
+            <div class="list-container" id="reports-list"></div>
+        </section>
+
+        <!-- VISTA GESTIONE -->
+        <section id="view-users" class="view" style="display:none">
+            <div class="list-container">
+                
+                <!-- ARCHIVIO STORICO (Espandibile) -->
+                <div id="admin-archive-section" style="display:none; margin-bottom: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <details class="archive-details" style="padding: 15px;">
+                        <summary style="font-weight:bold; cursor:pointer; color:var(--dark);">
+                            🗄️ Segnalazioni Archiviate (<span id="archive-count">0</span>)
+                        </summary>
+                        <div style="margin-top:15px; display:flex; justify-content:flex-end;">
+                            <button class="btn-small btn-primary" onclick="viewArchiveOnMap()">🌍 Vedi tutto su Mappa</button>
+                        </div>
+                        <div id="archive-list-items" style="max-height:300px; overflow-y:auto; margin-top:10px; border-top:1px solid #eee;">
+                            <!-- Items archivio popolati via JS -->
+                        </div>
+                    </details>
+                </div>
+
+                <div id="admin-group-tools" class="group-mgmt-box">
+                    <details>
+                        <summary style="font-weight:bold; cursor:pointer; font-size:1.1rem; color:var(--dark);">
+                            🏗️ Gestione Gruppi C.d.V
+                        </summary>
+                        <div style="margin-top:15px;">
+                            <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px; margin-bottom:15px; background:white; padding:10px; border-radius:4px;">
+                                <input type="text" id="new-group-name" placeholder="Nome Gruppo (es. Via Roma)" style="margin:0">
+                                <div style="display:flex; gap:5px; align-items:center;">
+                                    <button class="btn-secondary" onclick="startGroupLocationPick()" style="flex:1; font-size:0.8rem; background: #e0f2fe; border:1px solid #3b82f6; color: #1d4ed8;">📍 Imposta Centro</button>
+                                    <input type="text" id="new-group-lat" placeholder="Lat" readonly style="width:60px; background:#f3f4f6; font-size:0.8rem; text-align:center;">
+                                    <input type="text" id="new-group-lng" placeholder="Lng" readonly style="width:60px; background:#f3f4f6; font-size:0.8rem; text-align:center;">
+                                </div>
+                                <input type="hidden" id="new-group-zoom" value="16">
+                                <button class="btn-primary" style="width:100%" onclick="createNewGroup()">Crea Gruppo</button>
+                            </div>
+                            <div id="groups-list" style="max-height: 200px; overflow-y: auto; background: white; border-radius: 4px; border: 1px solid #ddd;"></div>
+                        </div>
+                    </details>
+                </div>
+                <h3>Utenti Gestiti</h3>
+                <div id="users-list">
+                    <p class="loading-text">Caricamento utenti...</p>
+                </div>
+            </div>
+        </section>
+
+        <button id="fab-add" class="fab" onclick="startLocationPick()" style="display:none">
+            <span class="material-icons">add</span>
+        </button>
+
+    </div>
+
+    <!-- MODALI -->
+    
+    <div id="modal-safety" class="modal">
+        <div class="modal-content alert">
+            <span class="material-icons icon-large">warning</span>
+            <h3>È un'emergenza?</h3>
+            <div class="modal-actions">
+                <a href="tel:112" class="btn-danger">SÌ, CHIAMA 112</a>
+                <button class="btn-secondary" onclick="closeModal('modal-safety'); openReportModal()">NO, Procedi</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-report" class="modal">
+        <div class="modal-content">
+            <h3>Nuova Segnalazione</h3>
+            <div id="admin-report-group-container" style="display:none; margin-bottom:15px; padding:10px; background:#e0f2fe; border-radius:8px; border:1px solid #3b82f6;">
+                <label style="color:#1e40af; font-weight:bold;">Seleziona Quartiere (Admin)</label>
+                <select id="report-group-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #93c5fd; margin-top:5px; background:white;">
+                </select>
+            </div>
+            <label>Categoria</label>
+            <div class="category-selector">
+                <button type="button" class="cat-btn selected" onclick="setCategory('sospetto', this)">
+                    <span class="material-icons">visibility</span> Sospetto
+                </button>
+                <button type="button" class="cat-btn" onclick="setCategory('degrado', this)">
+                    <span class="material-icons">broken_image</span> Degrado
+                </button>
+                <button type="button" class="cat-btn" onclick="setCategory('assistenza', this)">
+                    <span class="material-icons">volunteer_activism</span> Aiuto
+                </button>
+            </div>
+            <label>Descrizione *</label>
+            <textarea id="report-desc" rows="3" placeholder="Cosa sta succedendo?"></textarea>
+            
+            <!-- PRIVACY DISCLAIMER -->
+            <div style="font-size: 0.8rem; color: #666; background: #fffbeb; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid #fcd34d; line-height: 1.4;">
+                ⚠️ <b>Privacy:</b> Indicare <b>solo le lettere</b> delle targhe (es. AB...YZ), mai la targa completa. Non inserire nomi o dati personali sensibili.
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-report')">Annulla</button>
+                <button class="btn-primary" onclick="submitReport()">INVIA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-user-edit" class="modal">
+        <div class="modal-content">
+            <h3>Gestione Utente</h3>
+            <input type="hidden" id="edit-user-id">
+            <label>Nome e Cognome</label>
+            <input type="text" id="edit-user-name" disabled style="background: #f0f0f0;">
+            <label>Email (Sola Lettura)</label>
+            <input type="text" id="edit-user-email" disabled style="background: #f0f0f0;">
+            <label>Telefono (Modificabile)</label>
+            <input type="text" id="edit-user-phone" placeholder="Inserisci Telefono">
+            <div id="super-admin-fields">
+                <label>Ruolo (Solo Admin)</label>
+                <select id="edit-user-role">
+                    <option value="utente">Utente</option>
+                    <option value="coord_gruppo">Coordinatore Gruppo</option>
+                    <option value="coord_generale">Super Admin</option>
+                </select>
+                <label>Assegna Gruppo (Solo Admin)</label>
+                <select id="edit-user-group"><option value="">-- Nessun Gruppo --</option></select>
+            </div>
+            <div id="coord-fields" style="display:none; margin-top:15px; padding:10px; background:#f9f9f9; border-radius:8px">
+                <p style="font-size:0.9rem">Puoi rimuovere questo utente dal tuo gruppo.</p>
+                <button class="btn-danger" style="width:100%; margin-top:5px" onclick="removeUserFromGroup()">Rimuovi dal Gruppo</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-user-edit')">Annulla</button>
+                <button class="btn-primary" id="btn-save-user" onclick="saveUserChanges()">SALVA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE MODIFICA GRUPPO -->
+    <div id="modal-group-edit" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Modifica Gruppo</h3>
+            <input type="hidden" id="edit-group-id">
+            <label>Nome Gruppo</label>
+            <input type="text" id="edit-group-name">
+            
+            <div style="display:flex; gap:5px; align-items:center; margin-bottom:15px; margin-top:10px;">
+                <button class="btn-secondary" onclick="startGroupLocationEdit()" style="flex:1; font-size:0.8rem; background: #e0f2fe; border:1px solid #3b82f6; color: #1d4ed8;">📍 Cambia Posizione</button>
+                <input type="text" id="edit-group-lat" placeholder="Lat" readonly style="width:60px; background:#f3f4f6; font-size:0.8rem; text-align:center;">
+                <input type="text" id="edit-group-lng" placeholder="Lng" readonly style="width:60px; background:#f3f4f6; font-size:0.8rem; text-align:center;">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-group-edit')">Annulla</button>
+                <button class="btn-primary" onclick="saveGroupChanges()">SALVA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-stats" class="modal">
+        <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <h3>Analisi C.d.V Globale</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--dark);" id="stat-total">0</div>
+                    <div style="font-size: 0.8rem;">Totale Segnalazioni</div>
+                </div>
+                <div style="background: #fffbeb; padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #d97706;" id="stat-active-groups">0</div>
+                    <div style="font-size: 0.8rem;">Gruppi Attivi</div>
+                </div>
+            </div>
+            <h4>Riepilogo delle segnalazioni</h4>
+            <table class="stats-table">
+                <thead><tr><th>Gruppo</th><th>Tot</th><th>Sosp.</th><th>Degr.</th><th>Aiuto</th></tr></thead>
+                <tbody id="stats-groups-body"></tbody>
+            </table>
+            <button class="btn-secondary" style="width: 100%; margin-top:20px" onclick="closeModal('modal-stats')">Chiudi</button>
+        </div>
+    </div>
+
+    <div id="modal-message" class="modal" style="z-index: 6000;">
+        <div class="modal-content" style="text-align: center;">
+            <div id="msg-icon" style="font-size: 3rem; margin-bottom: 10px;">ℹ️</div>
+            <h3 id="msg-title">Avviso</h3>
+            <p id="msg-text" style="color: #555; margin-bottom: 20px;">Testo del messaggio</p>
+            <button class="btn-primary" style="width: 100%;" onclick="closeModal('modal-message')">OK</button>
+        </div>
+    </div>
+
+    <div id="modal-confirm" class="modal" style="z-index: 6000;">
+        <div class="modal-content" style="text-align: center;">
+            <span class="material-icons" style="font-size: 3rem; color: var(--primary-dark); margin-bottom: 10px;">help_outline</span>
+            <h3 id="confirm-title">Conferma</h3>
+            <p id="confirm-text" style="color: #555; margin-bottom: 20px;">Sei sicuro?</p>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-confirm')">Annulla</button>
+                <button class="btn-primary" id="btn-confirm-ok">SÌ, PROCEDI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-dossier" class="modal">
+        <div class="modal-content">
+            <h3>🗂️ Crea Dossier per Autorità</h3>
+            <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">Hai selezionato <b id="dossier-count-modal">0</b> segnalazioni.</p>
+            <label>Titolo / Oggetto</label>
+            <input type="text" id="dossier-title" placeholder="Es. Sospetti Auto Rossa - Via Roma" value="Report Attività C.d.V">
+            <label>Note per le Autorità (Opzionale)</label>
+            <textarea id="dossier-notes" rows="4" placeholder="Descrivi il pattern o le preoccupazioni rilevate..."></textarea>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-dossier')">Annulla</button>
+                <button class="btn-primary" onclick="generateDossierPDF()">SCARICA PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE POLICY -->
+    <div id="modal-policy" class="modal" style="z-index: 6000;">
+        <div class="modal-content">
+            <h3>🔒 Privacy Policy & Condizioni</h3>
+            <div style="font-size: 0.9rem; line-height: 1.5; text-align: left;">
+                <p><b>1. Scopo dell'Applicazione</b><br>
+                Questa applicazione è uno strumento GRATUITO e SENZA FINI DI LUCRO a supporto del Controllo del Vicinato (C.d.V) di Grosseto.</p>
+                
+                <p><b>2. Trattamento dei Dati</b><br>
+                I dati raccolti (email, nome, numero di telefono, posizioni GPS) sono utilizzati <b>esclusivamente</b> per il coordinamento delle attività di sicurezza partecipata.</p>
+                
+                <p><b>3. Sicurezza</b><br>
+                L'infrastruttura si appoggia a Supabase, una piattaforma leader che garantisce elevati standard di sicurezza e crittografia dei dati.</p>
+                
+                <p><b>4. Condivisione a Terzi</b><br>
+                <b>NESSUN DATO</b> sarà mai venduto, ceduto o condiviso con terze parti commerciali. Le uniche entità con cui potranno essere condivisi report anonimizzati o specifici sono le Forze dell'Ordine o le Autorità Locali, esclusivamente per finalità di pubblica sicurezza.</p>
+                
+                <p><b>5. Cancellazione</b><br>
+                Ogni utente ha il diritto di richiedere la cancellazione completa del proprio account e dei dati associati contattando il Coordinatore Generale.</p>
+            </div>
+            <button class="btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeModal('modal-policy')">Ho Capito</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+    </script>
+</body>
+</html>
