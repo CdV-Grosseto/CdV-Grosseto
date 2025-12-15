@@ -183,17 +183,40 @@ function openPolicyModal() {
     document.getElementById('modal-policy').style.display = 'flex';
 }
 
-// ================= 1. AUTENTICAZIONE =================
+// ================= 1. AUTENTICAZIONE E RECUPERO PASSWORD =================
+
+// CHECK AGGRESSIVO INIZIALE PER NUOVA SCHEDA DI RECUPERO
+// Questo codice gira immediatamente al caricamento della pagina
+(function checkRecoveryUrl() {
+    // Controlla se l'URL contiene il frammento tipico del reset password di Supabase
+    if (window.location.hash && window.location.hash.includes('type=recovery')) {
+        console.log("Rilevata sessione di recupero password");
+        // Attendiamo che il DOM sia pronto per mostrare il modale
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('modal-reset-confirm');
+            if (modal) {
+                modal.style.display = 'flex';
+                // Massima priorità visiva
+                modal.style.zIndex = '99999'; 
+            }
+        });
+    }
+})();
+
+// Listener standard di Supabase (come backup se il check URL fallisce o viene consumato)
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+        const modal = document.getElementById('modal-reset-confirm');
+        if(modal) {
+             modal.style.display = 'flex';
+             modal.style.zIndex = '99999';
+        }
+    }
+});
+
 async function checkSession() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) handleLoginSuccess(session.user);
-    
-    // Gestione Password Recovery (se l'utente clicca sul link email)
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
-            document.getElementById('modal-reset-confirm').style.display = 'flex';
-        }
-    });
 }
 checkSession();
 
@@ -210,7 +233,7 @@ async function handleLogin() {
     else handleLoginSuccess(data.user);
 }
 
-// NUOVA FUNZIONE: RECUPERO PASSWORD UTENTE
+// FUNZIONE RICHIESTA EMAIL DI RESET
 async function handlePasswordReset() {
     const email = document.getElementById('email').value;
     
@@ -220,18 +243,18 @@ async function handlePasswordReset() {
 
     showConfirm("Recupero Password", `Inviare una mail di ripristino a: ${email}?`, async () => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href // Ritorna alla PWA
+            redirectTo: window.location.href // Ritorna alla PWA corrente
         });
 
         if (error) {
             showMessage("Errore", error.message, 'error');
         } else {
-            showMessage("Email Inviata", "Controlla la tua casella di posta (anche spam). Troverai un link per accedere e reimpostare la password.", "success");
+            showMessage("Email Inviata", "Controlla la posta. Troverai un link per reimpostare la password. Cliccalo e segui le istruzioni nella nuova scheda che si aprirà.", "success");
         }
     });
 }
 
-// NUOVA FUNZIONE: COMPLETA RESET PASSWORD
+// FUNZIONE COMPLETAMENTO RESET (INSERIMENTO NUOVA PWD)
 async function completePasswordReset() {
     const p1 = document.getElementById('reset-new-pwd').value;
     const p2 = document.getElementById('reset-confirm-pwd').value;
@@ -246,6 +269,8 @@ async function completePasswordReset() {
     } else {
         document.getElementById('modal-reset-confirm').style.display = 'none';
         showMessage("Successo", "La tua password è stata aggiornata! Memorizzala bene.", "success");
+        // Opzionale: pulisci l'URL per rimuovere il token di reset
+        window.history.replaceState(null, document.title, window.location.pathname);
     }
 }
 
@@ -498,17 +523,22 @@ function initMap() {
     });
 }
 
+// NUOVA FUNZIONE: Vai al marker dalla lista
 function goToReportMarker(id) {
     const marker = markersMap[id];
     
+    // Se siamo in modalità selezione dossier, non navighiamo
     if (isDossierMode) return;
 
     if (marker) {
         switchTab('map');
+        // zoomToShowLayer è una funzione di Leaflet.markercluster
+        // Espande il cluster se necessario e zooma sul marker
         markersLayer.zoomToShowLayer(marker, function() {
             marker.openPopup();
         });
     } else {
+        // Fallback: se il marker non è nel layer (es. filtri), proviamo a trovare le coord
         const r = allReportsCache.find(x => x.id === id);
         if(r) {
             const coords = parseCoordinates(r);
@@ -699,23 +729,36 @@ function getFilteredReports() {
             const fullText = desc + " " + author;
 
             // NEW: Ricerca "Fuzzy" Intelligente
+            // Divide la descrizione in parole singole per confronto mirato
             const descWords = desc.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/);
 
             return tokens.every(token => {
+                // 1. Match Esatto (il più veloce)
                 if (fullText.includes(token)) return true;
+
+                // 2. Espansione Sinonimi & Controllo Fuzzy
                 let allVariants = [token];
+                
+                // Trova sinonimi
                 for (const group of SYNONYM_GROUPS) {
                     if (group.includes(token)) {
                         allVariants = [...allVariants, ...group];
-                        break; 
+                        break; // Trovato il gruppo, non serve cercarne altri
                     }
                 }
+
+                // Controlla se una variante "matcha" una parola del testo (con tolleranza refusi)
                 return allVariants.some(variant => {
+                    // Controlla substring diretta della variante
                     if (fullText.includes(variant)) return true;
+                    
+                    // Controlla distanza di Levenshtein sulle singole parole
                     return descWords.some(word => {
+                         // Tolleranza: 0 per parole corte (<4), 1 per medie (4-6), 2 per lunghe (>6)
                          let threshold = 1;
                          if(variant.length < 4) threshold = 0;
                          if(variant.length > 6) threshold = 2;
+
                          return levenshtein(word, variant) <= threshold;
                     });
                 });
@@ -761,7 +804,7 @@ function parseCoordinates(r) {
 function renderMapMarkers() {
     if (!map || !markersLayer) return;
     markersLayer.clearLayers(); 
-    markersMap = {}; 
+    markersMap = {}; // Reset della cache dei marker
 
     const reports = getFilteredReports();
 
@@ -815,11 +858,14 @@ function renderMapMarkers() {
                 </div>`;
             marker.bindPopup(popupContent);
             markersLayer.addLayer(marker);
+            
+            // Salviamo il riferimento al marker
             markersMap[r.id] = marker;
         }
     });
 }
 
+// ------------------- GESTIONE ARCHIVIO -------------------
 function loadArchive() {
     const archiveList = document.getElementById('archive-list-items');
     const archiveCount = document.getElementById('archive-count');
@@ -1006,8 +1052,13 @@ function renderReportsList() {
         const card = document.createElement('div');
         const isSelectable = isDossierMode && currentProfile.role === 'coord_generale';
         
+        // Assegno classe dossier-mode se attivo per stile CSS
         card.className = `report-card ${isSelectable ? 'selectable dossier-mode' : ''}`;
         
+        // Aggiungo onclick sull'intera card
+        // Se NON siamo in modalità dossier, il click porta alla mappa.
+        // Se siamo in modalità dossier, il click potrebbe servire per selezionare (ma c'è la checkbox), 
+        // quindi meglio disabilitare la navigazione.
         card.onclick = () => {
              if (!isDossierMode) {
                  goToReportMarker(r.id);
@@ -1184,6 +1235,7 @@ function deleteReport(id) {
     });
 }
 
+// ================= 5. GESTIONE UTENTI & GRUPPI =================
 async function loadGroups() { 
     const { data } = await supabase.from('groups').select('*').order('name'); 
     if (data) { availableGroups = data; renderGroupsList(); }
@@ -1300,10 +1352,12 @@ function deleteGroup(id) {
 
 function deleteUser(id) {
     showConfirm("Elimina Utente", "Sei sicuro di voler rimuovere questo utente (Login e Profilo)?", async () => {
+        // Usa la funzione RPC per cancellare auth.users e public.profiles
         const { error } = await supabase.rpc('delete_user_complete', { target_id: id });
 
         if (error) {
             console.error(error);
+            // Fallback: se la funzione non esiste ancora o fallisce, prova a cancellare solo il profilo
             const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
             
             if (profileError) {
@@ -1319,6 +1373,7 @@ function deleteUser(id) {
     });
 }
 
+// NUOVA FUNZIONE PER ADMIN MANUALE (Richiede script SQL)
 async function adminResetUserPassword() {
     const userId = document.getElementById('edit-user-id').value;
     const newPass = document.getElementById('admin-new-password').value;
@@ -1328,6 +1383,7 @@ async function adminResetUserPassword() {
     }
     
     showConfirm("Reset Password Manuale", `Stai per cambiare forzatamente la password a "${newPass}". Confermi?`, async () => {
+        // Chiama la funzione RPC 'admin_reset_password' (da creare su Supabase)
         const { data, error } = await supabase.rpc('admin_reset_password', { 
             target_user_id: userId, 
             new_password: newPass 
@@ -1338,7 +1394,7 @@ async function adminResetUserPassword() {
             showMessage("Errore RPC", "Impossibile resettare la password. Assicurati di aver eseguito lo script SQL 'admin_reset_password' nel Database di Supabase.", "error");
         } else {
             showMessage("Password Aggiornata", "La password dell'utente è stata cambiata. Comunicala all'utente.", "success");
-            document.getElementById('admin-new-password').value = ''; 
+            document.getElementById('admin-new-password').value = ''; // Pulisci campo
         }
     });
 }
@@ -1381,12 +1437,14 @@ async function loadUsers() {
             emailDisplay = `<div class="email-display">📧 ${user.email || 'N/D'}</div>`;
         }
 
+        // --- PRESENCE STATUS DOT (Solo per Admin) ---
         let statusDot = '';
         if (currentProfile.role === 'coord_generale') {
            const isOnline = onlineUsers.has(user.id);
-           const color = isOnline ? '#10B981' : '#EF4444'; 
+           const color = isOnline ? '#10B981' : '#EF4444'; // Green o Red
            statusDot = `<span title="${isOnline ? 'Online' : 'Offline'}" style="height:10px; width:10px; background-color:${color}; border-radius:50%; display:inline-block; margin-right:8px; box-shadow:0 0 4px rgba(0,0,0,0.2);"></span>`;
         }
+        // ---------------------------------------------
 
         const cardHtml = `
             <div class="user-card ${user.role}" style="${isUnassigned ? 'border-left-color: #f59e0b; background: #fffbeb;' : ''}">
@@ -1427,6 +1485,7 @@ async function openEditUser(uid) {
     document.getElementById('edit-user-email').value = u.email||''; 
     document.getElementById('edit-user-phone').value = u.phone||''; 
     
+    // Reset campo password admin
     const pwdInput = document.getElementById('admin-new-password');
     if(pwdInput) pwdInput.value = '';
 
