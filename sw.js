@@ -1,5 +1,5 @@
-// Aggiornato a v51 - modifica al logo iniziale
-const CACHE_NAME = 'cdv-grosseto-v51';
+// Aggiornato a v52 - inserita modifica segnalazione
+const CACHE_NAME = 'cdv-grosseto-v52';
 const ASSETS = [
   './',
   './index.html',
@@ -37,6 +37,7 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
 
 
 
