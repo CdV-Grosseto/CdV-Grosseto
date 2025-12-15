@@ -186,24 +186,19 @@ function openPolicyModal() {
 // ================= 1. AUTENTICAZIONE E RECUPERO PASSWORD =================
 
 // CHECK AGGRESSIVO INIZIALE PER NUOVA SCHEDA DI RECUPERO
-// Questo codice gira immediatamente al caricamento della pagina
 (function checkRecoveryUrl() {
-    // Controlla se l'URL contiene il frammento tipico del reset password di Supabase
     if (window.location.hash && window.location.hash.includes('type=recovery')) {
         console.log("Rilevata sessione di recupero password");
-        // Attendiamo che il DOM sia pronto per mostrare il modale
         document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('modal-reset-confirm');
             if (modal) {
                 modal.style.display = 'flex';
-                // Massima priorità visiva
-                modal.style.zIndex = '99999'; 
+                modal.style.zIndex = '99999'; // Massima priorità
             }
         });
     }
 })();
 
-// Listener standard di Supabase (come backup se il check URL fallisce o viene consumato)
 supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
         const modal = document.getElementById('modal-reset-confirm');
@@ -243,7 +238,7 @@ async function handlePasswordReset() {
 
     showConfirm("Recupero Password", `Inviare una mail di ripristino a: ${email}?`, async () => {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href // Ritorna alla PWA corrente
+            redirectTo: window.location.href 
         });
 
         if (error) {
@@ -254,23 +249,41 @@ async function handlePasswordReset() {
     });
 }
 
-// FUNZIONE COMPLETAMENTO RESET (INSERIMENTO NUOVA PWD)
+// FUNZIONE COMPLETAMENTO RESET (INSERIMENTO NUOVA PWD) - FIX Z-INDEX
 async function completePasswordReset() {
     const p1 = document.getElementById('reset-new-pwd').value;
     const p2 = document.getElementById('reset-confirm-pwd').value;
+    const btn = document.querySelector('#modal-reset-confirm button');
     
-    if (!p1 || p1.length < 6) return showMessage("Password Debole", "La password deve avere almeno 6 caratteri.", "error");
-    if (p1 !== p2) return showMessage("Errore", "Le password non coincidono.", "error");
+    // Assicuriamo che i messaggi di errore appaiano SOPRA il modale di reset (che ha z-index 99999)
+    const showTopMessage = (title, msg, type) => {
+        showMessage(title, msg, type);
+        document.getElementById('modal-message').style.zIndex = '100000';
+    };
+
+    if (!p1 || p1.length < 6) return showTopMessage("Password Debole", "La password deve avere almeno 6 caratteri.", "error");
+    if (p1 !== p2) return showTopMessage("Errore", "Le password non coincidono.", "error");
+
+    // Feedback visivo
+    const originalText = btn.innerText;
+    btn.innerText = "AGGIORNAMENTO...";
+    btn.disabled = true;
 
     const { error } = await supabase.auth.updateUser({ password: p1 });
 
     if (error) {
-        showMessage("Errore", error.message, 'error');
+        showTopMessage("Errore", error.message, 'error');
+        btn.innerText = originalText;
+        btn.disabled = false;
     } else {
         document.getElementById('modal-reset-confirm').style.display = 'none';
-        showMessage("Successo", "La tua password è stata aggiornata! Memorizzala bene.", "success");
-        // Opzionale: pulisci l'URL per rimuovere il token di reset
-        window.history.replaceState(null, document.title, window.location.pathname);
+        showTopMessage("Successo", "Password aggiornata. Ricarico l'applicazione...", "success");
+        
+        // Ricarica per pulire lo stato e l'URL
+        setTimeout(() => {
+            window.history.replaceState(null, document.title, window.location.pathname);
+            window.location.reload();
+        }, 2000);
     }
 }
 
@@ -353,7 +366,7 @@ async function handleLoginSuccess(user) {
     }
     
     loadGroups();
-    setupRealtime(); // Avvia la sincronizzazione e la Presence
+    setupRealtime(); 
     
     if (currentProfile) {
         if (currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo') {
@@ -385,7 +398,6 @@ async function handleLogout() {
 }
 
 function setupRealtime() {
-    // 1. Canale per i dati del DB
     const dbChannel = supabase.channel('db-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, (payload) => {
         loadReports();
@@ -401,7 +413,6 @@ function setupRealtime() {
     })
     .subscribe();
 
-    // 2. Canale per lo Stato Online (Presence)
     presenceChannel = supabase.channel('online-users');
     
     presenceChannel
@@ -409,7 +420,6 @@ function setupRealtime() {
             const newState = presenceChannel.presenceState();
             onlineUsers.clear();
             
-            // Estrai gli user_id dallo stato della presence
             for (const id in newState) {
                 const users = newState[id];
                 users.forEach(u => {
@@ -417,7 +427,6 @@ function setupRealtime() {
                 });
             }
             
-            // Se siamo nella schermata utenti, aggiorna la lista per vedere i pallini
             if (document.getElementById('view-users').style.display === 'block') {
                 loadUsers();
             }
@@ -451,10 +460,8 @@ function switchTab(tabName) {
                 map.invalidateSize(); 
                 renderMapMarkers(); 
                 if (currentGroupSettings && currentGroupSettings.lat && currentGroupSettings.lng) {
-                    // Non sovrascrivere se stiamo zoomando su un report specifico
                 } 
                 else if(markersLayer && markersLayer.getLayers().length > 0){
-                   // Rimossa fitBounds automatica per evitare salti continui
                 }
             }
         }, 200);
@@ -523,22 +530,15 @@ function initMap() {
     });
 }
 
-// NUOVA FUNZIONE: Vai al marker dalla lista
 function goToReportMarker(id) {
     const marker = markersMap[id];
-    
-    // Se siamo in modalità selezione dossier, non navighiamo
     if (isDossierMode) return;
-
     if (marker) {
         switchTab('map');
-        // zoomToShowLayer è una funzione di Leaflet.markercluster
-        // Espande il cluster se necessario e zooma sul marker
         markersLayer.zoomToShowLayer(marker, function() {
             marker.openPopup();
         });
     } else {
-        // Fallback: se il marker non è nel layer (es. filtri), proviamo a trovare le coord
         const r = allReportsCache.find(x => x.id === id);
         if(r) {
             const coords = parseCoordinates(r);
@@ -554,13 +554,11 @@ function goToReportMarker(id) {
 
 function toggleGroupMarkers() {
     const btn = document.getElementById('btn-toggle-groups');
-    
     if (map.hasLayer(groupsLayer)) {
         map.removeLayer(groupsLayer);
         btn.classList.remove('active');
     } else {
         groupsLayer.clearLayers();
-        
         const groupIcon = L.divIcon({
             className: 'custom-group-marker',
             html: `<div style="background:#1F2937; color:#FCD34D; border-radius:50%; width:30px; height:30px; display:flex; justify-content:center; align-items:center; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
@@ -569,7 +567,6 @@ function toggleGroupMarkers() {
             iconSize: [30, 30],
             iconAnchor: [15, 15]
         });
-
         availableGroups.forEach(g => {
             if(g.lat && g.lng) {
                 const marker = L.marker([g.lat, g.lng], { icon: groupIcon });
@@ -577,7 +574,6 @@ function toggleGroupMarkers() {
                 groupsLayer.addLayer(marker);
             }
         });
-        
         map.addLayer(groupsLayer);
         btn.classList.add('active');
         if(availableGroups.length > 0) {
@@ -619,7 +615,6 @@ function startGroupLocationEdit() {
 function cancelLocationPick() { 
     pickingMode = null;
     document.getElementById('location-picker-ui').style.display='none'; 
-    
     if (document.getElementById('view-users').style.display === 'block') {
         if(document.getElementById('edit-group-id').value) {
              document.getElementById('modal-group-edit').style.display='flex';
@@ -627,14 +622,12 @@ function cancelLocationPick() {
     } else {
         document.getElementById('fab-add').style.display='flex'; 
     }
-    
     if(tempReportMarker) { map.removeLayer(tempReportMarker); tempReportMarker = null; }
     if (pickingMode === 'group' || pickingMode === 'group-edit') switchTab('users');
 }
 
 function confirmLocation() { 
     if(!tempLocation) return showMessage("Attenzione", "Devi prima cliccare sulla mappa!", 'error');
-    
     if (pickingMode === 'report') {
         document.getElementById('location-picker-ui').style.display='none'; 
         document.getElementById('fab-add').style.display='flex'; 
@@ -655,7 +648,6 @@ function confirmLocation() {
         switchTab('users');
         document.getElementById('modal-group-edit').style.display='flex'; 
     }
-    
     pickingMode = null;
 }
 
@@ -669,15 +661,12 @@ function locateMe() {
     }, (err) => showMessage("Errore GPS", err.message, 'error'));
 }
 
-// ================= 4. GESTIONE SEGNALAZIONI & DOSSIER =================
 async function loadReports() {
     let query = supabase.from('reports').select('*').order('created_at', { ascending: false });
-
     if (currentProfile && currentProfile.role !== 'coord_generale') {
         if (!currentProfile.group_id) {
             allReportsCache = [];
             renderMapMarkers();
-            
             if(!sessionStorage.getItem('no_group_warned')) {
                 showMessage("Benvenuto!", "Il tuo account è attivo ma non sei ancora stato assegnato a un gruppo/quartiere. Contatta il coordinatore.", "info");
                 sessionStorage.setItem('no_group_warned', 'true');
@@ -686,22 +675,17 @@ async function loadReports() {
         }
         query = query.eq('group_id', currentProfile.group_id);
     }
-
     const { data, error } = await query;
     if (error) return console.error("Errore reports:", error);
-    
     allReportsCache = data || [];
-
     const userIds = [...new Set(allReportsCache.map(r => r.user_id))];
     const missingIds = userIds.filter(id => !profilesCache[id]);
-    
     if (missingIds.length > 0) {
         const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', missingIds);
         if (profiles) {
             profiles.forEach(p => { profilesCache[p.id] = p.full_name; });
         }
     }
-
     renderMapMarkers();
     renderReportsList();
     if(currentProfile && (currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo')) loadArchive();
@@ -709,7 +693,6 @@ async function loadReports() {
 
 function getFilteredReports() {
     let reports = allReportsCache;
-
     if (currentFilter === 'archivio') {
         reports = reports.filter(r => r.status === 'archiviata');
     } else {
@@ -719,57 +702,37 @@ function getFilteredReports() {
             else reports = reports.filter(r => r.category === currentFilter);
         }
     }
-
     if (currentSearchText && currentSearchText.length > 0) {
         const tokens = currentSearchText.split(/\s+/).filter(t => t.length > 0);
-        
         reports = reports.filter(r => {
             const desc = (r.description || '').toLowerCase();
             const author = (profilesCache[r.user_id] || '').toLowerCase();
             const fullText = desc + " " + author;
-
-            // NEW: Ricerca "Fuzzy" Intelligente
-            // Divide la descrizione in parole singole per confronto mirato
             const descWords = desc.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,"").split(/\s+/);
-
             return tokens.every(token => {
-                // 1. Match Esatto (il più veloce)
                 if (fullText.includes(token)) return true;
-
-                // 2. Espansione Sinonimi & Controllo Fuzzy
                 let allVariants = [token];
-                
-                // Trova sinonimi
                 for (const group of SYNONYM_GROUPS) {
                     if (group.includes(token)) {
                         allVariants = [...allVariants, ...group];
-                        break; // Trovato il gruppo, non serve cercarne altri
+                        break; 
                     }
                 }
-
-                // Controlla se una variante "matcha" una parola del testo (con tolleranza refusi)
                 return allVariants.some(variant => {
-                    // Controlla substring diretta della variante
                     if (fullText.includes(variant)) return true;
-                    
-                    // Controlla distanza di Levenshtein sulle singole parole
                     return descWords.some(word => {
-                         // Tolleranza: 0 per parole corte (<4), 1 per medie (4-6), 2 per lunghe (>6)
                          let threshold = 1;
                          if(variant.length < 4) threshold = 0;
                          if(variant.length > 6) threshold = 2;
-
                          return levenshtein(word, variant) <= threshold;
                     });
                 });
             });
         });
     }
-
     if (currentDateFilter !== 'all') {
         const now = new Date();
         const todayStart = new Date(now.setHours(0,0,0,0));
-        
         reports = reports.filter(r => {
             const rDate = new Date(r.created_at);
             if (currentDateFilter === 'today') {
@@ -786,7 +749,6 @@ function getFilteredReports() {
             return true;
         });
     }
-
     return reports;
 }
 
@@ -804,16 +766,13 @@ function parseCoordinates(r) {
 function renderMapMarkers() {
     if (!map || !markersLayer) return;
     markersLayer.clearLayers(); 
-    markersMap = {}; // Reset della cache dei marker
-
+    markersMap = {}; 
     const reports = getFilteredReports();
-
     const getSvgIcon = (fillColor) => {
         const svgHtml = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40">
                 <path fill="${fillColor}" stroke="#1F2937" stroke-width="2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
             </svg>`;
-        
         return L.divIcon({
             className: 'custom-marker',
             html: svgHtml,
@@ -822,12 +781,10 @@ function renderMapMarkers() {
             popupAnchor: [0, -40]
         });
     };
-
     reports.forEach(r => {
         const coords = parseCoordinates(r); 
         if (coords) {
             let color = '#808080'; 
-
             if (r.status === 'archiviata') {
                 color = '#374151'; 
             } else if (r.category === 'sospetto') {
@@ -837,13 +794,10 @@ function renderMapMarkers() {
             } else if (r.category === 'assistenza') {
                 color = (r.status === 'validata') ? '#c71585' : '#ffb6c1'; 
             }
-
             const marker = L.marker(coords, { icon: getSvgIcon(color) });
             const canManage = currentProfile && (currentProfile.role === 'coord_generale' || 
                              (currentProfile.role === 'coord_gruppo' && r.group_id === currentProfile.group_id));
-
             const authorName = profilesCache[r.user_id] || "Utente";
-
             let popupContent = `
                 <div style="min-width:160px; text-align:center">
                     <b>${r.category.toUpperCase()}</b> <span class="badge ${r.status}">${r.status}</span><br>
@@ -858,34 +812,27 @@ function renderMapMarkers() {
                 </div>`;
             marker.bindPopup(popupContent);
             markersLayer.addLayer(marker);
-            
-            // Salviamo il riferimento al marker
             markersMap[r.id] = marker;
         }
     });
 }
 
-// ------------------- GESTIONE ARCHIVIO -------------------
 function loadArchive() {
     const archiveList = document.getElementById('archive-list-items');
     const archiveCount = document.getElementById('archive-count');
     if (!archiveList) return;
-
     const archivedReports = allReportsCache.filter(r => r.status === 'archiviata');
     archiveCount.innerText = archivedReports.length;
-    
     archiveList.innerHTML = '';
     if (archivedReports.length === 0) {
         archiveList.innerHTML = '<div style="padding:10px; text-align:center; color:#999;">Nessuna segnalazione in archivio.</div>';
         return;
     }
-
     archivedReports.forEach(r => {
         const dateStr = new Date(r.created_at).toLocaleDateString('it-IT');
         const authorName = profilesCache[r.user_id] || "Utente sconosciuto";
         const groupObj = availableGroups.find(g => g.id === r.group_id);
         const groupName = groupObj ? groupObj.name : "Generale";
-
         const item = document.createElement('div');
         item.className = 'archive-item';
         item.innerHTML = `
@@ -926,7 +873,6 @@ function toggleDossierReport(id, checkbox) {
 function toggleDossierMode() {
     isDossierMode = !isDossierMode;
     selectedReportIds.clear();
-    
     document.getElementById('dossier-bar').style.display = isDossierMode ? 'block' : 'none';
     document.getElementById('dossier-count').innerText = "0 Selezionati";
     renderReportsList();
@@ -941,61 +887,50 @@ function openDossierModal() {
 async function printReport(id) {
     const r = allReportsCache.find(report => report.id === id);
     if(!r) return;
-
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
     const dateStr = new Date(r.created_at).toLocaleString('it-IT');
     const authorName = profilesCache[r.user_id] || "Utente";
     const groupObj = availableGroups.find(g => g.id === r.group_id);
     const groupName = groupObj ? groupObj.name : "Generale";
     const coords = parseCoordinates(r);
     const locationStr = coords ? `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}` : "N/D";
-
     doc.setFontSize(20);
     doc.setTextColor(245, 158, 11);
     doc.text("C.d.V Grosseto - Dettaglio Segnalazione", 10, 20);
-    
     doc.setFontSize(12);
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
     doc.text(`Categoria: ${r.category.toUpperCase()}`, 10, 40);
-    
     doc.setFont("helvetica", "normal");
     doc.text(`Stato: ${r.status}`, 10, 48);
     doc.text(`Data e Ora: ${dateStr}`, 10, 56);
     doc.text(`Gruppo: ${groupName}`, 10, 64);
     doc.text(`Autore: ${authorName}`, 10, 72);
     doc.text(`Coordinate: ${locationStr}`, 10, 80);
-    
     doc.setFont("helvetica", "bold");
     doc.text("Descrizione:", 10, 95);
-    
     doc.setFont("helvetica", "italic");
     doc.setFontSize(11);
     const descSplit = doc.splitTextToSize(r.description, 180);
     doc.text(descSplit, 15, 105);
-    
     doc.save(`CDV_Segnalazione_${dateStr.replace(/[\/:\s,]/g,'_')}.pdf`);
 }
 
 function shareReport(id) {
     const r = allReportsCache.find(x => x.id === id);
     if (!r) return;
-
     const dateStr = new Date(r.created_at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const groupObj = availableGroups.find(g => g.id === r.group_id);
     const groupName = groupObj ? groupObj.name : "Generale";
     const coords = parseCoordinates(r);
     const mapLink = coords ? `https://www.google.com/maps/search/?api=1&query=${coords[0]},${coords[1]}` : "N/D";
-
     const text = `🚨 *C.d.V. SEGNALAZIONE* 🚨\n\n` +
                  `📅 *Data:* ${dateStr}\n` +
                  `📍 *Zona:* ${groupName}\n` +
                  `⚠️ *Categoria:* ${r.category.toUpperCase()}\n\n` +
                  `📝 *Dettagli:*\n${r.description}\n\n` +
                  `🗺️ *Posizione:*\n${mapLink}`;
-
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
 }
@@ -1005,25 +940,17 @@ function renderReportsList() {
     if(!container) return;
     container.innerHTML = '';
     const reports = getFilteredReports();
-    
     if(reports.length === 0) container.innerHTML = '<p style="text-align:center; padding:20px;">Nessuna segnalazione.</p>';
-
     reports.forEach(r => {
         const canManage = currentProfile && (currentProfile.role === 'coord_generale' || 
                          (currentProfile.role === 'coord_gruppo' && r.group_id === currentProfile.group_id));
-        
         let adminHtml = '';
         if (canManage && !isDossierMode) {
             const btnArchive = (r.status !== 'archiviata') ? 
-                `<button class="btn-small" style="background:#6b7280;" onclick="event.stopPropagation(); archiveReport('${r.id}')">📂 Archivia</button>` : 
-                '';
-
+                `<button class="btn-small" style="background:#6b7280;" onclick="event.stopPropagation(); archiveReport('${r.id}')">📂 Archivia</button>` : '';
             const btnPrint = `<button class="btn-small btn-print" onclick="event.stopPropagation(); printReport('${r.id}')">🖨️ PDF</button>`;
-
             const btnValidate = (r.status === 'nuova') ? 
-                `<button class="btn-small btn-validate" onclick="event.stopPropagation(); updateReport('${r.id}', 'validata')">✅ Convalida</button>` : 
-                '';
-
+                `<button class="btn-small btn-validate" onclick="event.stopPropagation(); updateReport('${r.id}', 'validata')">✅ Convalida</button>` : '';
             adminHtml = `
                 <div class="admin-controls">
                     ${btnValidate}
@@ -1032,13 +959,11 @@ function renderReportsList() {
                     <button class="btn-small btn-delete" onclick="event.stopPropagation(); deleteReport('${r.id}')">🗑️ Elimina</button>
                 </div>`;
         }
-        
         let checkboxHtml = '';
         if (isDossierMode && currentProfile.role === 'coord_generale') {
             const isChecked = selectedReportIds.has(r.id) ? 'checked' : '';
             checkboxHtml = `<input type="checkbox" class="card-checkbox" onchange="event.stopPropagation(); toggleDossierReport('${r.id}', this)" ${isChecked}>`;
         }
-
         let groupName = '';
         const g = availableGroups.find(g => g.id === r.group_id);
         if (g) {
@@ -1046,25 +971,15 @@ function renderReportsList() {
         } else {
             groupName = `<span style="font-size:0.7rem; color:#999; display:block; margin-bottom:4px">📍 Generale</span>`;
         }
-
         const authorName = profilesCache[r.user_id] || "Utente";
-
         const card = document.createElement('div');
         const isSelectable = isDossierMode && currentProfile.role === 'coord_generale';
-        
-        // Assegno classe dossier-mode se attivo per stile CSS
         card.className = `report-card ${isSelectable ? 'selectable dossier-mode' : ''}`;
-        
-        // Aggiungo onclick sull'intera card
-        // Se NON siamo in modalità dossier, il click porta alla mappa.
-        // Se siamo in modalità dossier, il click potrebbe servire per selezionare (ma c'è la checkbox), 
-        // quindi meglio disabilitare la navigazione.
         card.onclick = () => {
              if (!isDossierMode) {
                  goToReportMarker(r.id);
              }
         };
-
         card.innerHTML = `
             ${checkboxHtml}
             <div class="report-header">
@@ -1088,24 +1003,19 @@ function renderReportsList() {
 async function generateDossierPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
     const title = document.getElementById('dossier-title').value;
     const notes = document.getElementById('dossier-notes').value;
     const selectedReports = allReportsCache.filter(r => selectedReportIds.has(r.id));
-    
     doc.setFontSize(22);
     doc.setTextColor(245, 158, 11);
     doc.text("C.d.V Grosseto - Report", 10, 20);
-    
     doc.setFontSize(12);
     doc.setTextColor(0);
     doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 10, 30);
     doc.text(`Autore Report: ${currentProfile.full_name}`, 10, 36);
-
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text(title, 10, 50);
-    
     if(notes) {
         doc.setFontSize(11);
         doc.setFont("helvetica", "italic");
@@ -1114,41 +1024,31 @@ async function generateDossierPDF() {
         const splitNotes = doc.splitTextToSize(notes, 180);
         doc.text(splitNotes, 10, 66);
     }
-    
     let yPos = notes ? 80 + (notes.length/2) : 60;
-    
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Dettaglio Segnalazioni Selezionate", 10, yPos);
     yPos += 10;
-
     selectedReports.forEach((r, i) => {
         if (yPos > 270) { doc.addPage(); yPos = 20; }
-        
         const coords = parseCoordinates(r);
         const locationStr = coords ? `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}` : "Posizione non disp.";
         const author = profilesCache[r.user_id] || "N/D";
         const dateStr = new Date(r.created_at).toLocaleString('it-IT');
-        
         doc.setFillColor(245, 245, 245);
         doc.rect(10, yPos, 190, 35, 'F');
-        
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0);
         doc.text(`#${i+1} - ${r.category.toUpperCase()} (${dateStr})`, 15, yPos + 8);
-        
         doc.setFont("helvetica", "normal");
         doc.text(`Luogo: ${locationStr}`, 15, yPos + 14);
         doc.text(`Segnalato da: ${author}`, 15, yPos + 20);
-        
         doc.setFont("helvetica", "italic");
         const descSplit = doc.splitTextToSize(r.description, 180);
         doc.text(descSplit, 15, yPos + 28);
-        
         yPos += 40;
     });
-
     doc.save("CDV_Dossier.pdf");
     closeModal('modal-dossier');
     toggleDossierMode(); 
@@ -1167,7 +1067,6 @@ function openReportModal() {
     } else {
          document.getElementById('admin-report-group-container').style.display = 'none';
     }
-    
     document.getElementById('modal-report').style.display='flex'; 
 }
 
@@ -1182,18 +1081,13 @@ function setCategory(cat, btn) {
 async function submitReport() { 
     const desc = document.getElementById('report-desc').value; 
     if(!desc || !tempLocation) return showMessage("Dati mancanti", "Inserisci una descrizione e un punto.", 'error');
-
     let targetGroupId = currentProfile.group_id;
-
     if (currentProfile.role === 'coord_generale') {
         targetGroupId = document.getElementById('report-group-select').value;
         if (!targetGroupId) return showMessage("Gruppo Mancante", "Come Admin, devi specificare a quale gruppo appartiene questa segnalazione.", 'error');
     }
-    
     if (!targetGroupId && currentProfile.role !== 'coord_generale') return showMessage("Errore", "Nessun gruppo assegnato.", 'error');
-
     const wkt = `POINT(${tempLocation.lng} ${tempLocation.lat})`; 
-    
     const { error } = await supabase.from('reports').insert({
         user_id: currentUser.id, 
         group_id: targetGroupId, 
@@ -1204,7 +1098,6 @@ async function submitReport() {
         lng: tempLocation.lng, 
         status: 'nuova'
     }); 
-    
     if(error) showMessage("Errore Invio", error.message, 'error'); 
     else { 
         showMessage("Ottimo", "Segnalazione inviata con successo!", 'success'); 
@@ -1235,7 +1128,6 @@ function deleteReport(id) {
     });
 }
 
-// ================= 5. GESTIONE UTENTI & GRUPPI =================
 async function loadGroups() { 
     const { data } = await supabase.from('groups').select('*').order('name'); 
     if (data) { availableGroups = data; renderGroupsList(); }
@@ -1251,15 +1143,12 @@ function renderGroupsList() {
     const list = document.getElementById('groups-list');
     if (!list) return;
     list.innerHTML = '';
-    
     const divAll = document.createElement('div');
     divAll.className = `group-item ${selectedGroupIdFilter === null ? 'active-filter' : ''}`;
     divAll.style.background = selectedGroupIdFilter === null ? '#e0f2fe' : 'white';
     divAll.innerHTML = `<span onclick="filterUsersByGroup(null)" style="cursor:pointer; font-weight:bold; flex-grow:1;">Mostra Tutti</span>`;
     list.appendChild(divAll);
-
     if (availableGroups.length === 0) { return; }
-    
     availableGroups.forEach(g => {
         const div = document.createElement('div');
         const isActive = selectedGroupIdFilter === g.id;
@@ -1279,12 +1168,10 @@ function renderGroupsList() {
 function openEditGroup(id) {
     const group = availableGroups.find(g => g.id === id);
     if(!group) return;
-
     document.getElementById('edit-group-id').value = group.id;
     document.getElementById('edit-group-name').value = group.name;
     document.getElementById('edit-group-lat').value = group.lat;
     document.getElementById('edit-group-lng').value = group.lng;
-
     document.getElementById('modal-group-edit').style.display = 'flex';
 }
 
@@ -1293,15 +1180,12 @@ async function saveGroupChanges() {
     const name = document.getElementById('edit-group-name').value;
     const lat = document.getElementById('edit-group-lat').value;
     const lng = document.getElementById('edit-group-lng').value;
-
     if(!name || !lat || !lng) return showMessage("Errore", "Dati mancanti", 'error');
-
     const { error } = await supabase.from('groups').update({
         name: name,
         lat: parseFloat(lat),
         lng: parseFloat(lng)
     }).eq('id', id);
-
     if(error) {
         showMessage("Errore", error.message, 'error');
     } else {
@@ -1316,17 +1200,14 @@ async function createNewGroup() {
     const lat = document.getElementById('new-group-lat').value || 42.760;
     const lng = document.getElementById('new-group-lng').value || 11.108;
     const zoom = document.getElementById('new-group-zoom').value || 15;
-
     if(!name) return showMessage("Manca il nome", "Inserisci un nome per il gruppo", 'error');
     if(!lat || !lng) return showMessage("Manca posizione", "Seleziona prima un punto sulla mappa!", 'error');
-    
     const { error } = await supabase.from('groups').insert({ 
         name: name,
         lat: parseFloat(lat),
         lng: parseFloat(lng),
         zoom: parseInt(zoom)
     });
-    
     if (error) {
         showMessage("Errore", error.message, 'error');
     } else {
@@ -1340,10 +1221,8 @@ function deleteGroup(id) {
     showConfirm("Elimina Gruppo", "Il gruppo verrà eliminato e gli utenti scollegati.", async () => {
         const { error: err1 } = await supabase.from('profiles').update({group_id: null}).eq('group_id', id);
         if(err1) return showMessage("Errore Profili", err1.message, 'error');
-
         const { error: err2 } = await supabase.from('reports').update({group_id: null}).eq('group_id', id);
         if(err2) return showMessage("Errore Reports", err2.message, 'error');
-
         const { error: err3 } = await supabase.from('groups').delete().eq('id', id);
         if(err3) showMessage("Errore Eliminazione", err3.message, 'error');
         else showMessage("Eliminato", "Gruppo cancellato correttamente.", 'success');
@@ -1352,14 +1231,10 @@ function deleteGroup(id) {
 
 function deleteUser(id) {
     showConfirm("Elimina Utente", "Sei sicuro di voler rimuovere questo utente (Login e Profilo)?", async () => {
-        // Usa la funzione RPC per cancellare auth.users e public.profiles
         const { error } = await supabase.rpc('delete_user_complete', { target_id: id });
-
         if (error) {
             console.error(error);
-            // Fallback: se la funzione non esiste ancora o fallisce, prova a cancellare solo il profilo
             const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
-            
             if (profileError) {
                 showMessage("Errore", error.message, 'error');
             } else {
@@ -1373,28 +1248,23 @@ function deleteUser(id) {
     });
 }
 
-// NUOVA FUNZIONE PER ADMIN MANUALE (Richiede script SQL)
 async function adminResetUserPassword() {
     const userId = document.getElementById('edit-user-id').value;
     const newPass = document.getElementById('admin-new-password').value;
-
     if(!newPass || newPass.length < 6) {
         return showMessage("Errore Password", "La password deve essere di almeno 6 caratteri.", "error");
     }
-    
     showConfirm("Reset Password Manuale", `Stai per cambiare forzatamente la password a "${newPass}". Confermi?`, async () => {
-        // Chiama la funzione RPC 'admin_reset_password' (da creare su Supabase)
         const { data, error } = await supabase.rpc('admin_reset_password', { 
             target_user_id: userId, 
             new_password: newPass 
         });
-        
         if (error) {
             console.error(error);
             showMessage("Errore RPC", "Impossibile resettare la password. Assicurati di aver eseguito lo script SQL 'admin_reset_password' nel Database di Supabase.", "error");
         } else {
             showMessage("Password Aggiornata", "La password dell'utente è stata cambiata. Comunicala all'utente.", "success");
-            document.getElementById('admin-new-password').value = ''; // Pulisci campo
+            document.getElementById('admin-new-password').value = ''; 
         }
     });
 }
@@ -1403,49 +1273,36 @@ async function loadUsers() {
     if (!currentProfile) return;
     let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (currentProfile.role === 'coord_gruppo') query = query.eq('group_id', currentProfile.group_id);
-
     const { data: users } = await query;
     const container = document.getElementById('users-list'); 
     container.innerHTML='';
-
     let displayUsers = users;
     if (currentProfile.role === 'coord_generale' && selectedGroupIdFilter) {
         displayUsers = users.filter(u => u.group_id === selectedGroupIdFilter);
     }
-
     let unassignedHtml = '', assignedHtml = '';
-    
     displayUsers.forEach(user => {
         const grp = availableGroups.find(g => g.id === user.group_id);
         const isUnassigned = !user.group_id;
         let canEdit = (currentProfile.role === 'coord_generale') || (currentProfile.role === 'coord_gruppo' && user.role === 'utente');
-        
         let actionButtons = '';
-        
         const isProtected = (user.email === PROTECTED_EMAIL);
-
         if (canEdit) {
             actionButtons += `<button class="btn-small btn-edit" style="margin-right:5px;" onclick="openEditUser('${user.id}')">✏️</button>`;
-            
             if (!isProtected) {
                 actionButtons += `<button class="btn-small btn-delete" onclick="deleteUser('${user.id}')">🗑️</button>`;
             }
         }
-
         let emailDisplay = '';
         if (currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo') {
             emailDisplay = `<div class="email-display">📧 ${user.email || 'N/D'}</div>`;
         }
-
-        // --- PRESENCE STATUS DOT (Solo per Admin) ---
         let statusDot = '';
         if (currentProfile.role === 'coord_generale') {
            const isOnline = onlineUsers.has(user.id);
-           const color = isOnline ? '#10B981' : '#EF4444'; // Green o Red
+           const color = isOnline ? '#10B981' : '#EF4444'; 
            statusDot = `<span title="${isOnline ? 'Online' : 'Offline'}" style="height:10px; width:10px; background-color:${color}; border-radius:50%; display:inline-block; margin-right:8px; box-shadow:0 0 4px rgba(0,0,0,0.2);"></span>`;
         }
-        // ---------------------------------------------
-
         const cardHtml = `
             <div class="user-card ${user.role}" style="${isUnassigned ? 'border-left-color: #f59e0b; background: #fffbeb;' : ''}">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start">
@@ -1462,11 +1319,9 @@ async function loadUsers() {
                     <div style="margin-left:10px;">${actionButtons}</div>
                 </div>
             </div>`;
-        
         if (isUnassigned && currentProfile.role === 'coord_generale') unassignedHtml += cardHtml;
         else assignedHtml += cardHtml;
     });
-    
     if (unassignedHtml && !selectedGroupIdFilter) container.innerHTML += unassignedHtml + '<hr>';
     container.innerHTML += assignedHtml || '<p style="text-align:center; padding:10px">Nessun utente trovato.</p>';
 }
@@ -1474,21 +1329,15 @@ async function loadUsers() {
 async function openEditUser(uid) { 
     const {data:u} = await supabase.from('profiles').select('*').eq('id', uid).single(); 
     if(!u) { showMessage("Errore", "Dati utente non trovati", 'error'); return; }
-    
     document.getElementById('edit-user-id').value = u.id; 
-    
     const nameInput = document.getElementById('edit-user-name');
     nameInput.value = u.full_name||'';
     nameInput.disabled = false; 
     nameInput.style.background = 'white'; 
-    
     document.getElementById('edit-user-email').value = u.email||''; 
     document.getElementById('edit-user-phone').value = u.phone||''; 
-    
-    // Reset campo password admin
     const pwdInput = document.getElementById('admin-new-password');
     if(pwdInput) pwdInput.value = '';
-
     if(currentProfile.role === 'coord_generale') {
         document.getElementById('super-admin-fields').style.display = 'block';
         document.getElementById('coord-fields').style.display = 'none';
@@ -1513,19 +1362,15 @@ async function openEditUser(uid) {
 
 async function saveUserChanges() { 
     const uid = document.getElementById('edit-user-id').value; 
-    
     const updateData = { 
         phone: document.getElementById('edit-user-phone').value,
         full_name: document.getElementById('edit-user-name').value 
     };
-
     if (currentProfile.role === 'coord_generale') {
         updateData.role = document.getElementById('edit-user-role').value;
         updateData.group_id = document.getElementById('edit-user-group').value || null;
     }
-
     const { error } = await supabase.from('profiles').update(updateData).eq('id', uid); 
-    
     if (error) {
         showMessage("Errore Salvataggio", error.message, 'error');
     } else {
@@ -1538,7 +1383,6 @@ async function saveUserChanges() {
 function removeUserFromGroup() {
     showConfirm("Rimuovi utente", "Rimuovere questo utente dal gruppo?", async () => {
         const { error } = await supabase.from('profiles').update({group_id: null}).eq('id', document.getElementById('edit-user-id').value);
-        
         if (error) {
             showMessage("Errore", error.message, 'error');
         } else {
@@ -1552,34 +1396,26 @@ function removeUserFromGroup() {
 async function openStatsModal() {
     document.getElementById('modal-stats').style.display = 'flex';
     document.getElementById('stat-total').innerText = allReportsCache.length;
-
     const statsBody = document.getElementById('stats-groups-body');
     statsBody.innerHTML = '';
-    
     let activeGroupsCount = 0;
     const stats = {}; 
-
     availableGroups.forEach(g => {
         stats[g.id] = { name: g.name, total: 0, sospetto: 0, degrado: 0, assistenza: 0 };
     });
-
     stats['null'] = { name: 'Generale', total: 0, sospetto: 0, degrado: 0, assistenza: 0 };
-
     allReportsCache.forEach(r => {
         const gid = r.group_id || 'null';
         if (!stats[gid]) stats[gid] = { name: 'Sconosciuto', total: 0, sospetto: 0, degrado: 0, assistenza: 0 }; 
-        
         stats[gid].total++;
         if (r.category === 'sospetto') stats[gid].sospetto++;
         if (r.category === 'degrado') stats[gid].degrado++;
         if (r.category === 'assistenza') stats[gid].assistenza++;
     });
-
     Object.keys(stats).forEach(gid => {
         const s = stats[gid];
         if (s.total > 0) {
             if (gid !== 'null') activeGroupsCount++;
-            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${s.name}</td>
@@ -1591,6 +1427,5 @@ async function openStatsModal() {
             statsBody.appendChild(tr);
         }
     });
-
     document.getElementById('stat-active-groups').innerText = activeGroupsCount;
 }
