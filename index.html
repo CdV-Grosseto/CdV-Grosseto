@@ -89,6 +89,7 @@
                 
                 <!-- LOGIN FORM -->
                 <div id="form-login">
+                    <!-- TESTI AGGIORNATI -->
                     <h2>Benvenuti</h2>
                     <p class="login-subtitle">Gruppi del vicinato Grosseto</p>
                     
@@ -97,11 +98,6 @@
                         <input type="password" id="password" placeholder="Password" required>
                         <button type="submit" class="btn-primary">Accedi</button>
                     </form>
-                    
-                    <!-- NUOVO: Link Reset Password -->
-                    <p class="auth-toggle" style="margin-top:10px; font-size:0.8rem;" onclick="handlePasswordReset()">Password dimenticata?</p>
-                    
-                    <hr style="margin:15px 0; border:0; border-top:1px solid #eee;">
                     <p class="auth-toggle" onclick="toggleAuthMode('signup')">Non hai un account? <b>Registrati</b></p>
                 </div>
 
@@ -130,6 +126,7 @@
         <!-- VISTA MAPPA -->
         <section id="view-map" class="view" style="display:none">
             
+            <!-- NUOVA BARRA DI RICERCA -->
             <div class="map-search-bar">
                 <span class="material-icons">search</span>
                 <input type="text" id="map-search-input" placeholder="Cerca (targa, via, colore...)" oninput="handleSearch(this.value)">
@@ -138,7 +135,9 @@
 
             <div class="filters-bar">
                 <button class="filter-chip active" data-filter="all" onclick="applyFilter('all')">Tutti</button>
+                <!-- NUOVO FILTRO TEMPOREALE -->
                 <button class="filter-chip date-filter-btn" onclick="toggleDateFilter()">📅 Tutto</button>
+                
                 <button class="filter-chip" data-filter="sospetto" onclick="applyFilter('sospetto')">👁️ Sospetti</button>
                 <button class="filter-chip" data-filter="degrado" onclick="applyFilter('degrado')">💡 Degrado</button>
                 <button class="filter-chip" data-filter="assistenza" onclick="applyFilter('assistenza')">🤝 Aiuto</button>
@@ -163,6 +162,7 @@
                 <span class="material-icons">my_location</span>
             </button>
 
+            <!-- TASTO TOGGLE MARKER GRUPPI (SOLO ADMIN) -->
             <button id="btn-toggle-groups" class="map-control-btn groups-toggle-btn" style="display:none" onclick="toggleGroupMarkers()">
                 <span class="material-icons">flag</span>
             </button>
@@ -170,9 +170,11 @@
 
         <!-- VISTA BACHECA -->
         <section id="view-list" class="view" style="display:none">
+            <!-- BARRA FILTRI STATICA PER LA LISTA -->
             <div class="filters-bar-static">
                 <button class="filter-chip active" data-filter="all" onclick="applyFilter('all')">Tutti</button>
                 <button class="filter-chip date-filter-btn" onclick="toggleDateFilter()">📅 Tutto</button>
+                
                 <button class="filter-chip" data-filter="sospetto" onclick="applyFilter('sospetto')">👁️ Sospetti</button>
                 <button class="filter-chip" data-filter="degrado" onclick="applyFilter('degrado')">💡 Degrado</button>
                 <button class="filter-chip" data-filter="assistenza" onclick="applyFilter('assistenza')">🤝 Aiuto</button>
@@ -198,6 +200,7 @@
         <section id="view-users" class="view" style="display:none">
             <div class="list-container">
                 
+                <!-- ARCHIVIO STORICO (Espandibile) -->
                 <div id="admin-archive-section" style="display:none; margin-bottom: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                     <details class="archive-details" style="padding: 15px;">
                         <summary style="font-weight:bold; cursor:pointer; color:var(--dark);">
@@ -206,7 +209,9 @@
                         <div style="margin-top:15px; display:flex; justify-content:flex-end;">
                             <button class="btn-small btn-primary" onclick="viewArchiveOnMap()">🌍 Vedi tutto su Mappa</button>
                         </div>
-                        <div id="archive-list-items" style="max-height:300px; overflow-y:auto; margin-top:10px; border-top:1px solid #eee;"></div>
+                        <div id="archive-list-items" style="max-height:300px; overflow-y:auto; margin-top:10px; border-top:1px solid #eee;">
+                            <!-- Items archivio popolati via JS -->
+                        </div>
                     </details>
                 </div>
 
@@ -279,6 +284,7 @@
             <label>Descrizione *</label>
             <textarea id="report-desc" rows="3" placeholder="Cosa sta succedendo?"></textarea>
             
+            <!-- PRIVACY DISCLAIMER -->
             <div style="font-size: 0.8rem; color: #666; background: #fffbeb; padding: 10px; border-radius: 6px; margin-top: 10px; border: 1px solid #fcd34d; line-height: 1.4;">
                 ⚠️ <b>Privacy:</b> Indicare <b>solo le lettere</b> delle targhe (es. AB...YZ), mai la targa completa. Non inserire nomi o dati personali sensibili.
             </div>
@@ -290,6 +296,7 @@
         </div>
     </div>
 
+    <!-- MODALE MODIFICA REPORT (NUOVA) -->
     <div id="modal-report-edit" class="modal">
         <div class="modal-content">
             <h3>✏️ Modifica Segnalazione</h3>
@@ -323,17 +330,6 @@
                 </select>
                 <label>Assegna Gruppo (Solo Admin)</label>
                 <select id="edit-user-group"><option value="">-- Nessun Gruppo --</option></select>
-                
-                <!-- NUOVO: SEZIONE RESET PASSWORD MANUALE (SOLO ADMIN) -->
-                <hr style="margin:15px 0; border:0; border-top:1px dashed #ccc;">
-                <label style="color:#d97706; font-weight:bold;">🛠️ Reset Password Utente (Manuale)</label>
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <input type="text" id="admin-new-password" placeholder="Nuova Password" style="margin:0; background:#fffbeb; border-color:#fcd34d;">
-                    <button class="btn-small btn-primary" style="background:#d97706; font-size:0.8rem; padding:8px;" onclick="adminResetUserPassword()">SALVA PWD</button>
-                </div>
-                <p style="font-size:0.75rem; color:#666; margin-top:5px;">⚠️ Cambia immediatamente la password dell'utente. Richiede script SQL attivato.</p>
-                <!-- FINE SEZIONE RESET -->
-
             </div>
             <div id="coord-fields" style="display:none; margin-top:15px; padding:10px; background:#f9f9f9; border-radius:8px">
                 <p style="font-size:0.9rem">Puoi rimuovere questo utente dal tuo gruppo.</p>
@@ -341,11 +337,12 @@
             </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal('modal-user-edit')">Annulla</button>
-                <button class="btn-primary" id="btn-save-user" onclick="saveUserChanges()">SALVA DATI</button>
+                <button class="btn-primary" id="btn-save-user" onclick="saveUserChanges()">SALVA</button>
             </div>
         </div>
     </div>
 
+    <!-- MODALE MODIFICA GRUPPO -->
     <div id="modal-group-edit" class="modal">
         <div class="modal-content">
             <h3>✏️ Modifica Gruppo</h3>
@@ -363,19 +360,6 @@
                 <button class="btn-secondary" onclick="closeModal('modal-group-edit')">Annulla</button>
                 <button class="btn-primary" onclick="saveGroupChanges()">SALVA</button>
             </div>
-        </div>
-    </div>
-
-    <!-- NUOVO MODALE RESET PASSWORD OBBLIGATORIO (Attivato da Link Email) -->
-    <div id="modal-reset-confirm" class="modal" style="z-index: 7000;">
-        <div class="modal-content" style="text-align: center;">
-            <h3>🔐 Imposta Nuova Password</h3>
-            <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">Hai effettuato l'accesso tramite link di recupero. Scegli ora la tua nuova password per completare l'accesso.</p>
-            
-            <input type="password" id="reset-new-pwd" placeholder="Nuova Password (min 6 caratteri)" style="margin-bottom:10px;">
-            <input type="password" id="reset-confirm-pwd" placeholder="Conferma Password">
-            
-            <button class="btn-primary" style="width: 100%; margin-top: 15px;" onclick="completePasswordReset()">IMPOSTA PASSWORD</button>
         </div>
     </div>
 
@@ -437,6 +421,7 @@
         </div>
     </div>
 
+    <!-- MODALE POLICY -->
     <div id="modal-policy" class="modal" style="z-index: 6000;">
         <div class="modal-content">
             <h3>🔒 Privacy Policy & Condizioni</h3>
