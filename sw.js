@@ -1,5 +1,5 @@
-// Aggiornato a v53 - modifica al logo iniziale e UI aggiornamento
-const CACHE_NAME = 'cdv-grosseto-v53';
+// Aggiornato a v54 - gestione reset password con interfaccia obbligatoria
+const CACHE_NAME = 'cdv-grosseto-v55';
 const ASSETS = [
   './',
   './index.html',
