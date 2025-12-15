@@ -1,5 +1,5 @@
 // Aggiornato a v54 - gestione reset password con interfaccia obbligatoria
-const CACHE_NAME = 'cdv-grosseto-v55';
+const CACHE_NAME = 'cdv-grosseto-v56';
 const ASSETS = [
   './',
   './index.html',
@@ -37,3 +37,4 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
