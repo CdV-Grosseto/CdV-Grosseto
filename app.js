@@ -954,9 +954,13 @@ function renderReportsList() {
                 `<button class="btn-small btn-validate" onclick="event.stopPropagation(); updateReport('${r.id}', 'validata')">✅ Convalida</button>` : 
                 '';
 
+            // NUOVO BOTTONE MODIFICA (Matita)
+            const btnEdit = `<button class="btn-small btn-edit" onclick="event.stopPropagation(); openEditReport('${r.id}')">✏️ Modifica</button>`;
+
             adminHtml = `
                 <div class="admin-controls">
                     ${btnValidate}
+                    ${btnEdit} 
                     ${btnPrint}
                     ${btnArchive}
                     <button class="btn-small btn-delete" onclick="event.stopPropagation(); deleteReport('${r.id}')">🗑️ Elimina</button>
@@ -1013,6 +1017,41 @@ function renderReportsList() {
             ${adminHtml}`;
         container.appendChild(card);
     });
+}
+
+// ------------------- NUOVE FUNZIONI MODIFICA REPORT -------------------
+function openEditReport(id) {
+    const r = allReportsCache.find(x => x.id === id);
+    if (!r) return;
+    
+    document.getElementById('edit-report-id').value = id;
+    document.getElementById('edit-report-desc').value = r.description;
+    
+    document.getElementById('modal-report-edit').style.display = 'flex';
+}
+
+async function saveReportEdit() {
+    const id = document.getElementById('edit-report-id').value;
+    const newDesc = document.getElementById('edit-report-desc').value;
+    
+    if (!newDesc.trim()) return showMessage("Errore", "La descrizione non può essere vuota.", "error");
+
+    const { error } = await supabase.from('reports').update({ description: newDesc }).eq('id', id);
+    
+    if(error) {
+        showMessage("Errore", error.message, 'error');
+    } else {
+        closeModal('modal-report-edit');
+        showMessage("Successo", "Testo segnalazione aggiornato.", 'success');
+        // Non serve ricaricare tutto manualmente, ci pensa il listener realtime,
+        // ma per feedback immediato possiamo forzare un refresh della lista se siamo lì.
+        if(document.getElementById('view-list').style.display === 'block') {
+             // Aggiorna localmente la cache per evitare glitch visivi prima del refresh da server
+             const r = allReportsCache.find(x => x.id === id);
+             if(r) r.description = newDesc;
+             renderReportsList();
+        }
+    }
 }
 
 async function generateDossierPDF() {
