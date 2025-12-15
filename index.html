@@ -116,7 +116,7 @@
 
                 <!-- DISCLAIMER & POLICY -->
                 <div class="disclaimer-box">
-                    ⚠️ <b>ATTENZIONE:</b> L'applicazione è ad uso esclusivo delle persone autorizzate e facenti parte del C.d.V. (Controllo del Vicinato). Ogni abuso sarà segnalato.
+                   ⚠️ <b>ATTENZIONE:</b> L'applicazione è ad uso esclusivo delle persone autorizzate e facenti parte del C.d.V. (Controllo del Vicinato). Ogni abuso sarà segnalato.
                 </div>
                 <div class="policy-link" onclick="openPolicyModal()">Privacy Policy & Termini d'Uso</div>
 
@@ -292,6 +292,21 @@
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal('modal-report')">Annulla</button>
                 <button class="btn-primary" onclick="submitReport()">INVIA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE MODIFICA REPORT (NUOVA) -->
+    <div id="modal-report-edit" class="modal">
+        <div class="modal-content">
+            <h3>✏️ Modifica Segnalazione</h3>
+            <p style="font-size:0.85rem; color:#666; margin-bottom:15px">Modifica il testo della segnalazione.</p>
+            <input type="hidden" id="edit-report-id">
+            <textarea id="edit-report-desc" rows="5" style="width:100%; padding:10px;"></textarea>
+            
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('modal-report-edit')">Annulla</button>
+                <button class="btn-primary" onclick="saveReportEdit()">SALVA MODIFICHE</button>
             </div>
         </div>
     </div>
