@@ -50,6 +50,35 @@
         .disclaimer-box {
             font-size: 0.75rem; color: #555; background: #FFFBEB; padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid #FCD34D; line-height: 1.3;
         }
+
+        /* BANNER AGGIORNAMENTO */
+        #update-notification {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 400px;
+            justify-content: space-between;
+        }
+        #update-reload-btn {
+            background: var(--primary);
+            color: var(--dark);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -78,6 +107,12 @@
                 <button class="tab" id="tab-users" style="display:none" onclick="switchTab('users')">Gestione</button>
             </div>
         </nav>
+
+        <!-- BANNER AGGIORNAMENTO DISPONIBILE -->
+        <div id="update-notification">
+            <span style="font-size: 0.9rem;">Nuova versione disponibile!</span>
+            <button id="update-reload-btn" onclick="window.location.reload()">AGGIORNA</button>
+        </div>
 
         <!-- VISTA LOGIN / REGISTRAZIONE -->
         <section id="view-login" class="view active">
@@ -451,7 +486,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
     <script>
-        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                
+                // Logica per rilevare aggiornamenti
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // C'è un nuovo aggiornamento pronto
+                            document.getElementById('update-notification').style.display = 'flex';
+                        }
+                    });
+                });
+
+            }).catch(err => console.log('SW Registration Fail', err));
+
+            // Ricarica la pagina se il controller cambia (ovvero il nuovo SW ha preso il comando)
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                window.location.reload();
+                refreshing = true;
+            });
+        }
     </script>
 </body>
 </html>
