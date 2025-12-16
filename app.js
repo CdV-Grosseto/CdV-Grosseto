@@ -3,30 +3,32 @@
 // ==========================================
 const SUPABASE_URL = 'https://wszrdapqvnygwhtjinjj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzenJkYXBxdm55Z3dodGppbmpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5Mjk3MzgsImV4cCI6MjA3OTUwNTczOH0.eDLdHZqqFxACcm1BsaJ_29KU-p8aXL9VfUQNA8nm90c';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// FIX: Usiamo 'supabaseClient' per evitare conflitti con la variabile globale 'supabase' del CDN
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- VARIABILI DI STATO ---
 let currentUser = null;
 let currentProfile = null;
-let currentGroupSettings = null; 
+let currentGroupSettings = null;
 let map = null;
 let markersLayer = null;
 let groupsLayer = null;
-let userMarker = null;      
-let tempReportMarker = null; 
-let tempLocation = null;    
-let selectedCategory = 'sospetto'; 
+let userMarker = null;
+let tempReportMarker = null;
+let tempLocation = null;
+let selectedCategory = 'sospetto';
 let availableGroups = [];
 let allReportsCache = [];
-let profilesCache = {}; 
+let profilesCache = {};
 let currentFilter = 'all';
-let pickingMode = null; 
+let pickingMode = null;
 let selectedGroupIdFilter = null;
-let markersMap = {}; 
+let markersMap = {};
 
 // Nuovi Filtri
 let currentSearchText = '';
-let currentDateFilter = 'all'; 
+let currentDateFilter = 'all';
 
 // Stato Dossier
 let isDossierMode = false;
@@ -70,14 +72,14 @@ const SYNONYM_GROUPS = [
     ['donna', 'donne', 'signora', 'signore', 'ragazza', 'ragazze', 'femmina', 'femmine'],
     ['ragazzo', 'ragazzi', 'giovane', 'giovani', 'adolescente', 'adolescenti', 'minorenne', 'minorenni', 'bambino'],
     ['sospetto', 'sospetti', 'estraneo', 'estranei', 'sconosciuto', 'sconosciuti', 'losco', 'furtivo'],
-    ['extracomunitario', 'extracomunitari', 'straniero', 'stranieri', 'africano', 'nordafricano', 'colore'], 
+    ['extracomunitario', 'extracomunitari', 'straniero', 'stranieri', 'africano', 'nordafricano', 'colore'],
     ['scuro', 'scuri', 'scura', 'scure', 'nero', 'neri', 'nera', 'nere'],
     ['bianco', 'bianchi', 'bianca', 'bianche', 'chiaro', 'chiari'],
     ['rosso', 'rossi', 'rossa', 'rosse', 'bordeaux'],
-    ['blu', 'azzurro', 'scuro', 'notte'], 
+    ['blu', 'azzurro', 'scuro', 'notte'],
     ['grigio', 'grigia', 'argento', 'silver', 'metallizzato'],
     ['targa', 'numero', 'lettere', 'targato', 'targata', 'inizia', 'finisce'],
-    ['rubare', 'furto', 'scassinare', 'ladro', 'ladri', 'rubato', 'rubata', 'topo', 'topi', 'intrusione'], 
+    ['rubare', 'furto', 'scassinare', 'ladro', 'ladri', 'rubato', 'rubata', 'topo', 'topi', 'intrusione'],
     ['cane', 'cani', 'animale', 'animali', 'guinzaglio'],
     ['droga', 'spaccio', 'sostanze', 'bustina', 'pusher', 'spacciatore', 'scambio'],
     ['scendere', 'sceso', 'scesi', 'uscire', 'uscito', 'montare'],
@@ -186,7 +188,7 @@ function openPolicyModal() {
 
 // ================= 1. AUTENTICAZIONE =================
 async function checkSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) handleLoginSuccess(session.user);
 }
 checkSession();
@@ -199,7 +201,7 @@ function toggleAuthMode(mode) {
 async function handleLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) showMessage("Errore Login", error.message, 'error');
     else handleLoginSuccess(data.user);
 }
@@ -211,17 +213,17 @@ async function handleSignUp() {
     
     if(!name) return showMessage("Attenzione", "Inserisci Nome e Cognome", 'error');
 
-    const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password, 
-        options: { data: { full_name: name } } 
+    const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } }
     });
     
     if (error) {
         showMessage("Errore Registrazione", error.message, 'error');
     } else {
         if (data.user) {
-             const { error: profileError } = await supabase.from('profiles').upsert([
+             const { error: profileError } = await supabaseClient.from('profiles').upsert([
                 { id: data.user.id, role: 'utente', full_name: name, email: email }
             ]);
             if (profileError) console.warn("Errore upsert profilo:", profileError);
@@ -234,12 +236,12 @@ async function handleSignUp() {
 async function handleLoginSuccess(user) {
     currentUser = user;
     
-    let { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    let { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
     
     if (!profile) {
         const fullName = user.user_metadata?.full_name || user.email.split('@')[0];
         
-        const { data: newProfile, error: insertError } = await supabase.from('profiles').upsert([
+        const { data: newProfile, error: insertError } = await supabaseClient.from('profiles').upsert([
             { id: user.id, role: 'utente', full_name: fullName, email: user.email }
         ]).select().single();
         
@@ -247,7 +249,7 @@ async function handleLoginSuccess(user) {
         profile = newProfile;
     } 
     else if (!profile.email && user.email) {
-        const { error: updateError } = await supabase.from('profiles').update({ email: user.email }).eq('id', user.id);
+        const { error: updateError } = await supabaseClient.from('profiles').update({ email: user.email }).eq('id', user.id);
         if(!updateError) profile.email = user.email;
     }
 
@@ -271,7 +273,7 @@ async function handleLoginSuccess(user) {
 
     const navTitle = document.querySelector('.nav-title');
     if (currentProfile.group_id) {
-        const { data: userGroup } = await supabase.from('groups').select('*').eq('id', currentProfile.group_id).single();
+        const { data: userGroup } = await supabaseClient.from('groups').select('*').eq('id', currentProfile.group_id).single();
         if (userGroup) {
             navTitle.innerText = `C.d.V - ${userGroup.name}`;
             currentGroupSettings = userGroup; 
@@ -309,14 +311,14 @@ async function handleLoginSuccess(user) {
 
 async function handleLogout() {
     if(presenceChannel) await presenceChannel.untrack();
-    supabase.removeAllChannels();
-    await supabase.auth.signOut();
+    supabaseClient.removeAllChannels();
+    await supabaseClient.auth.signOut();
     window.location.reload();
 }
 
 function setupRealtime() {
     // 1. Canale per i dati del DB
-    const dbChannel = supabase.channel('db-changes')
+    const dbChannel = supabaseClient.channel('db-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, (payload) => {
         loadReports();
         if (currentProfile && (currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo')) {
@@ -332,7 +334,7 @@ function setupRealtime() {
     .subscribe();
 
     // 2. Canale per lo Stato Online (Presence)
-    presenceChannel = supabase.channel('online-users');
+    presenceChannel = supabaseClient.channel('online-users');
     
     presenceChannel
         .on('presence', { event: 'sync' }, () => {
@@ -601,7 +603,7 @@ function locateMe() {
 
 // ================= 4. GESTIONE SEGNALAZIONI & DOSSIER =================
 async function loadReports() {
-    let query = supabase.from('reports').select('*').order('created_at', { ascending: false });
+    let query = supabaseClient.from('reports').select('*').order('created_at', { ascending: false });
 
     if (currentProfile && currentProfile.role !== 'coord_generale') {
         if (!currentProfile.group_id) {
@@ -626,7 +628,7 @@ async function loadReports() {
     const missingIds = userIds.filter(id => !profilesCache[id]);
     
     if (missingIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', missingIds);
+        const { data: profiles } = await supabaseClient.from('profiles').select('id, full_name').in('id', missingIds);
         if (profiles) {
             profiles.forEach(p => { profilesCache[p.id] = p.full_name; });
         }
@@ -940,7 +942,7 @@ function renderReportsList() {
 
     reports.forEach(r => {
         const canManage = currentProfile && (currentProfile.role === 'coord_generale' || 
-                         (currentProfile.role === 'coord_gruppo' && r.group_id === currentProfile.group_id));
+                          (currentProfile.role === 'coord_gruppo' && r.group_id === currentProfile.group_id));
         
         let adminHtml = '';
         if (canManage && !isDossierMode) {
@@ -1124,7 +1126,7 @@ async function submitReport() {
 
     const wkt = `POINT(${tempLocation.lng} ${tempLocation.lat})`; 
     
-    const { error } = await supabase.from('reports').insert({
+    const { error } = await supabaseClient.from('reports').insert({
         user_id: currentUser.id, 
         group_id: targetGroupId, 
         category: selectedCategory,
@@ -1146,14 +1148,14 @@ async function submitReport() {
 
 function updateReport(id, status) { 
     showConfirm("Conferma Validazione", "Vuoi validare questa segnalazione?", async () => {
-        const { error } = await supabase.from('reports').update({status}).eq('id', id);
+        const { error } = await supabaseClient.from('reports').update({status}).eq('id', id);
         if(error) showMessage("Errore", error.message, 'error');
     });
 }
 
 function archiveReport(id) { 
     showConfirm("Archivia Segnalazione", "La segnalazione verrà spostata in archivio e non sarà più visibile nella mappa principale.", async () => {
-        const { error } = await supabase.from('reports').update({status: 'archiviata'}).eq('id', id); 
+        const { error } = await supabaseClient.from('reports').update({status: 'archiviata'}).eq('id', id); 
         if(error) showMessage("Errore", error.message, 'error');
         else showMessage("Archiviata", "Segnalazione spostata in archivio.", "success");
     });
@@ -1161,13 +1163,13 @@ function archiveReport(id) {
 
 function deleteReport(id) { 
     showConfirm("Elimina Segnalazione", "Questa azione è irreversibile.", async () => {
-        await supabase.from('reports').delete().eq('id', id); 
+        await supabaseClient.from('reports').delete().eq('id', id); 
     });
 }
 
 // ================= 5. GESTIONE UTENTI & GRUPPI =================
 async function loadGroups() { 
-    const { data } = await supabase.from('groups').select('*').order('name'); 
+    const { data } = await supabaseClient.from('groups').select('*').order('name'); 
     if (data) { availableGroups = data; renderGroupsList(); }
 }
 
@@ -1226,7 +1228,7 @@ async function saveGroupChanges() {
 
     if(!name || !lat || !lng) return showMessage("Errore", "Dati mancanti", 'error');
 
-    const { error } = await supabase.from('groups').update({
+    const { error } = await supabaseClient.from('groups').update({
         name: name,
         lat: parseFloat(lat),
         lng: parseFloat(lng)
@@ -1250,7 +1252,7 @@ async function createNewGroup() {
     if(!name) return showMessage("Manca il nome", "Inserisci un nome per il gruppo", 'error');
     if(!lat || !lng) return showMessage("Manca posizione", "Seleziona prima un punto sulla mappa!", 'error');
     
-    const { error } = await supabase.from('groups').insert({ 
+    const { error } = await supabaseClient.from('groups').insert({ 
         name: name,
         lat: parseFloat(lat),
         lng: parseFloat(lng),
@@ -1268,13 +1270,13 @@ async function createNewGroup() {
 
 function deleteGroup(id) {
     showConfirm("Elimina Gruppo", "Il gruppo verrà eliminato e gli utenti scollegati.", async () => {
-        const { error: err1 } = await supabase.from('profiles').update({group_id: null}).eq('group_id', id);
+        const { error: err1 } = await supabaseClient.from('profiles').update({group_id: null}).eq('group_id', id);
         if(err1) return showMessage("Errore Profili", err1.message, 'error');
 
-        const { error: err2 } = await supabase.from('reports').update({group_id: null}).eq('group_id', id);
+        const { error: err2 } = await supabaseClient.from('reports').update({group_id: null}).eq('group_id', id);
         if(err2) return showMessage("Errore Reports", err2.message, 'error');
 
-        const { error: err3 } = await supabase.from('groups').delete().eq('id', id);
+        const { error: err3 } = await supabaseClient.from('groups').delete().eq('id', id);
         if(err3) showMessage("Errore Eliminazione", err3.message, 'error');
         else showMessage("Eliminato", "Gruppo cancellato correttamente.", 'success');
     });
@@ -1283,12 +1285,12 @@ function deleteGroup(id) {
 function deleteUser(id) {
     showConfirm("Elimina Utente", "Sei sicuro di voler rimuovere questo utente (Login e Profilo)?", async () => {
         // Usa la funzione RPC per cancellare auth.users e public.profiles
-        const { error } = await supabase.rpc('delete_user_complete', { target_id: id });
+        const { error } = await supabaseClient.rpc('delete_user_complete', { target_id: id });
 
         if (error) {
             console.error(error);
             // Fallback: se la funzione non esiste ancora o fallisce, prova a cancellare solo il profilo
-            const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
+            const { error: profileError } = await supabaseClient.from('profiles').delete().eq('id', id);
             
             if (profileError) {
                 showMessage("Errore", error.message, 'error');
@@ -1305,7 +1307,7 @@ function deleteUser(id) {
 
 async function loadUsers() {
     if (!currentProfile) return;
-    let query = supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    let query = supabaseClient.from('profiles').select('*').order('created_at', { ascending: false });
     if (currentProfile.role === 'coord_gruppo') query = query.eq('group_id', currentProfile.group_id);
 
     const { data: users } = await query;
@@ -1376,7 +1378,7 @@ async function loadUsers() {
 }
 
 async function openEditUser(uid) { 
-    const {data:u} = await supabase.from('profiles').select('*').eq('id', uid).single(); 
+    const {data:u} = await supabaseClient.from('profiles').select('*').eq('id', uid).single(); 
     if(!u) { showMessage("Errore", "Dati utente non trovati", 'error'); return; }
     
     document.getElementById('edit-user-id').value = u.id; 
@@ -1424,7 +1426,7 @@ async function saveUserChanges() {
         updateData.group_id = document.getElementById('edit-user-group').value || null;
     }
 
-    const { error } = await supabase.from('profiles').update(updateData).eq('id', uid); 
+    const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', uid); 
     
     if (error) {
         showMessage("Errore Salvataggio", error.message, 'error');
@@ -1437,7 +1439,7 @@ async function saveUserChanges() {
 
 function removeUserFromGroup() {
     showConfirm("Rimuovi utente", "Rimuovere questo utente dal gruppo?", async () => {
-        const { error } = await supabase.from('profiles').update({group_id: null}).eq('id', document.getElementById('edit-user-id').value);
+        const { error } = await supabaseClient.from('profiles').update({group_id: null}).eq('id', document.getElementById('edit-user-id').value);
         
         if (error) {
             showMessage("Errore", error.message, 'error');
