@@ -6,7 +6,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v56';
+const APP_VERSION = 'v57';
 
 async function checkAppVersion() {
     try {
