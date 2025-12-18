@@ -6,7 +6,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v57';
+const APP_VERSION = 'v58';
 
 async function checkAppVersion() {
     try {
@@ -705,11 +705,21 @@ async function loadReports() {
     }
 
     // --- STARTUP EMERGENCY CHECK ---
-    // Se c'è un'emergenza attiva e non l'abbiamo ancora mostrata in questa sessione
-    const activeEmergency = allReportsCache.find(r => r.category === 'emergenza' && r.status !== 'archiviata' && (!r.expires_at || new Date(r.expires_at) > new Date()));
-    if (activeEmergency && !sessionStorage.getItem('emergency_shown_' + activeEmergency.id)) {
-        triggerEmergencyAlert(activeEmergency);
-        sessionStorage.setItem('emergency_shown_' + activeEmergency.id, 'true');
+    // Se ci sono emergenze attive e non le abbiamo ancora mostrate in questa sessione
+    const activeEmergencies = allReportsCache.filter(r =>
+        r.category === 'emergenza' &&
+        r.status !== 'archiviata' &&
+        (!r.expires_at || new Date(r.expires_at) > new Date()) &&
+        !sessionStorage.getItem('emergency_shown_' + r.id)
+    );
+
+    if (activeEmergencies.length > 0) {
+        triggerEmergencyAlert(activeEmergencies);
+
+        // Segniamo tutto come mostrato
+        activeEmergencies.forEach(r => {
+            sessionStorage.setItem('emergency_shown_' + r.id, 'true');
+        });
     }
     // -------------------------------
 
@@ -1283,8 +1293,26 @@ function openReportModal() {
 }
 
 // NUOVA: Trigger Alert Modale
-function triggerEmergencyAlert(report) {
-    document.getElementById('emergency-text').innerText = report.description || "ALLERTA GENERALE";
+function triggerEmergencyAlert(reports) {
+    const contentDiv = document.getElementById('emergency-text');
+
+    // Supporta sia oggetto singolo che array
+    const list = Array.isArray(reports) ? reports : [reports];
+    if (list.length === 0) return;
+
+    if (list.length === 1) {
+        contentDiv.innerText = list[0].description || "ALLERTA GENERALE";
+    } else {
+        // Genera lista HTML per multiple emergenze
+        let html = '<ul style="text-align:left; padding-left:20px; margin:0; list-style-type: disc;">';
+        list.forEach(r => {
+            const safeDesc = (r.description || "ALLERTA").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            html += `<li style="margin-bottom:8px;">${safeDesc}</li>`;
+        });
+        html += '</ul>';
+        contentDiv.innerHTML = html;
+    }
+
     document.getElementById('modal-emergency').style.display = 'flex';
 
     // Suono (prova a riprodurre, i browser potrebbero bloccare se non c'è stata interazione)
