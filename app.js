@@ -294,7 +294,7 @@ async function updatePushUI(forceState = null) {
     if (forceState !== null) {
         if (forceState) {
             icon.innerText = 'notifications_active';
-            icon.style.color = '#FCD34D'; // Giallo attivo
+            icon.style.color = '#1F2937'; // Grigio scuro (visibile su giallo)
         } else {
             icon.innerText = 'notifications_off';
             icon.style.color = '#ef4444'; // Rosso spento
@@ -312,7 +312,7 @@ async function updatePushUI(forceState = null) {
 
     if (sub) {
         icon.innerText = 'notifications_active';
-        icon.style.color = '#FCD34D';
+        icon.style.color = '#1F2937'; // Grigio scuro
     } else {
         icon.innerText = 'notifications_none';
         icon.style.color = 'white';
