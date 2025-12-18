@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v62';
+const APP_VERSION = 'v63';
 
 async function checkAppVersion() {
     try {
@@ -1374,6 +1374,10 @@ function openReportModal() {
         container.style.display = 'block';
 
         // MOSTRA PULSANTE EMERGENZA
+        document.getElementById('btn-cat-emergency').style.display = 'flex';
+    } else if (currentProfile.role === 'coord_gruppo') {
+        document.getElementById('admin-report-group-container').style.display = 'none';
+        // MOSTRA PULSANTE EMERGENZA ANCHE A COORD GRUPPO
         document.getElementById('btn-cat-emergency').style.display = 'flex';
     } else {
         document.getElementById('admin-report-group-container').style.display = 'none';
