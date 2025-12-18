@@ -4,9 +4,10 @@
 const SUPABASE_URL = 'https://wszrdapqvnygwhtjinjj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzenJkYXBxdm55Z3dodGppbmpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5Mjk3MzgsImV4cCI6MjA3OTUwNTczOH0.eDLdHZqqFxACcm1BsaJ_29KU-p8aXL9VfUQNA8nm90c';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v58';
+const APP_VERSION = 'v59';
 
 async function checkAppVersion() {
     try {
@@ -237,6 +238,87 @@ function toggleAuthMode(mode) {
     document.getElementById('form-signup').style.display = (mode === 'signup') ? 'block' : 'none';
 }
 
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+
+        console.log('Push Subscription:', JSON.stringify(subscription));
+
+        if (currentUser) {
+            const { error } = await supabaseClient.from('push_subscriptions').upsert({
+                user_id: currentUser.id,
+                group_id: currentProfile ? currentProfile.group_id : null,
+                subscription: subscription
+            }, { onConflict: 'user_id, subscription' });
+
+            if (error) {
+                console.warn("Errore salvataggio push:", error.message);
+                showMessage("Errore", "Impossibile attivare le notifiche.", "error");
+            }
+            else {
+                console.log("Push subscription salvata nel DB");
+                showMessage("Notifiche Attive", "Riceverai avvisi per le emergenze nel tuo quartiere.", "success");
+                updatePushUI(true);
+            }
+        }
+    } catch (e) {
+        console.warn("Utente ha rifiutato notifiche o errore:", e);
+        showMessage("Attenzione", "Hai bloccato le notifiche. Sbloccali dalle impostazioni del browser.", "error");
+        updatePushUI(false);
+    }
+}
+
+async function updatePushUI(forceState = null) {
+    const btn = document.getElementById('btn-notifications');
+    const icon = document.getElementById('icon-notif');
+    if (!btn) return;
+
+    // Check permission logic if forceState is null
+    if (forceState !== null) {
+        if (forceState) {
+            icon.innerText = 'notifications_active';
+            icon.style.color = '#FCD34D'; // Giallo attivo
+        } else {
+            icon.innerText = 'notifications_off';
+            icon.style.color = '#ef4444'; // Rosso spento
+        }
+        return;
+    }
+
+    if (!('serviceWorker' in navigator)) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+
+    if (sub) {
+        icon.innerText = 'notifications_active';
+        icon.style.color = '#FCD34D';
+    } else {
+        icon.innerText = 'notifications_none';
+        icon.style.color = 'white';
+    }
+}
+
 async function handleLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -310,6 +392,13 @@ async function handleLoginSuccess(user) {
         userNameDisplay.style.display = 'block';
     }
     document.getElementById('btn-logout').style.display = 'block';
+
+    // MOSTRA BOTTONE NOTIFICHE
+    const notifBtn = document.getElementById('btn-notifications');
+    if (notifBtn) {
+        notifBtn.style.display = 'block';
+        updatePushUI(); // Controlla stato iniziale
+    }
     // -------------------------------------
 
     const navTitle = document.querySelector('.nav-title');
@@ -356,6 +445,8 @@ async function handleLoginSuccess(user) {
     switchTab('map');
     initMap();
     loadReports();
+    // Tenta iscrizione notifiche (in background, senza bloccare)
+    subscribeToPush();
 }
 
 async function handleLogout() {

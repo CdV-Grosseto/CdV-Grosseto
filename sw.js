@@ -38,6 +38,57 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
+// ==========================================
+// PUSH NOTIFICATIONS
+// ==========================================
+self.addEventListener('push', function (event) {
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      console.log('Push ricevuto:', data);
+
+      const options = {
+        body: data.body,
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
+        vibrate: [200, 100, 200, 100, 400],
+        data: {
+          url: data.url || '/'
+        },
+        // requireInteraction: true -> Su Chrome mobile può essere fastidioso, meglio default
+        tag: 'cdv-alert' // Sovrascrive notifiche vecchie identiche
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title, options)
+      );
+    } catch (e) {
+      console.error('Errore parsing push:', e);
+    }
+  }
+});
+
+self.addEventListener('notificationclick', function (event) {
+  console.log('Notifica cliccata');
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+      // 1. Cerca una finestra già aperta
+      for (let i = 0; i < clientList.length; i++) {
+        let client = clientList[i];
+        if (client.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // 2. Se non c'è, aprine una nuova
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
 
 
 
