@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v61';
+const APP_VERSION = 'v62';
 
 async function checkAppVersion() {
     try {

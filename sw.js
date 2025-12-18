@@ -83,7 +83,8 @@ self.addEventListener('notificationclick', function (event) {
       }
       // 2. Se non c'è, aprine una nuova
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        // Usa lo scope del SW invece di '/' per supportare le sottocartelle (es. GitHub Pages)
+        return clients.openWindow(self.registration.scope);
       }
     })
   );
