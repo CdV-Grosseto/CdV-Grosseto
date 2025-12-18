@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v59';
+const APP_VERSION = 'v60';
 
 async function checkAppVersion() {
     try {
@@ -249,7 +249,7 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-async function subscribeToPush() {
+async function subscribeToPush(silent = false) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
     try {
@@ -270,17 +270,17 @@ async function subscribeToPush() {
 
             if (error) {
                 console.warn("Errore salvataggio push:", error.message);
-                showMessage("Errore", "Impossibile attivare le notifiche.", "error");
+                if (!silent) showMessage("Errore", "Impossibile attivare le notifiche.", "error");
             }
             else {
                 console.log("Push subscription salvata nel DB");
-                showMessage("Notifiche Attive", "Riceverai avvisi per le emergenze nel tuo quartiere.", "success");
+                if (!silent) showMessage("Notifiche Attive", "Riceverai avvisi per le emergenze nel tuo quartiere.", "success");
                 updatePushUI(true);
             }
         }
     } catch (e) {
         console.warn("Utente ha rifiutato notifiche o errore:", e);
-        showMessage("Attenzione", "Hai bloccato le notifiche. Sbloccali dalle impostazioni del browser.", "error");
+        if (!silent) showMessage("Attenzione", "Hai bloccato le notifiche. Sbloccali dalle impostazioni del browser.", "error");
         updatePushUI(false);
     }
 }
@@ -446,7 +446,7 @@ async function handleLoginSuccess(user) {
     initMap();
     loadReports();
     // Tenta iscrizione notifiche (in background, senza bloccare)
-    subscribeToPush();
+    subscribeToPush(true);
 }
 
 async function handleLogout() {
