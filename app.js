@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v63';
+const APP_VERSION = 'v66';
 
 async function checkAppVersion() {
     try {
@@ -65,6 +65,11 @@ let currentFilter = 'all';
 let pickingMode = null;
 let selectedGroupIdFilter = null;
 let markersMap = {};
+// Geofencing State
+let drawingMode = false;
+let tempBoundaryPoints = [];
+let tempPolygonLayer = null;
+let groupPolygonsLayer = new L.LayerGroup();
 
 // Nuovi Filtri
 let currentSearchText = '';
@@ -554,6 +559,33 @@ function applyFilter(filterType) {
     if (document.getElementById('view-list').style.display === 'block') renderReportsList();
 }
 
+function handleListSearch(text) {
+    currentSearchText = text.toLowerCase();
+
+    // Sincronizza input mappa se esiste
+    const mapInput = document.getElementById('map-search-input');
+    if (mapInput) mapInput.value = currentSearchText;
+
+    // Gestione X
+    const clearBtn = document.getElementById('clear-list-search-btn');
+    if (clearBtn) clearBtn.hidden = (text.length === 0);
+
+    renderMapMarkers();
+    renderReportsList();
+}
+
+function clearListSearch() {
+    currentSearchText = '';
+    document.getElementById('list-search-input').value = '';
+    document.getElementById('clear-list-search-btn').hidden = true;
+
+    const mapInput = document.getElementById('map-search-input');
+    if (mapInput) mapInput.value = '';
+
+    renderMapMarkers();
+    renderReportsList();
+}
+
 // ================= 3. MAPPA & INSERIMENTO =================
 function initMap() {
     if (map) return;
@@ -571,6 +603,9 @@ function initMap() {
     map = L.map('map', { zoomControl: false }).setView([startLat, startLng], startZoom);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // LAYER GRUPPI (POLIGONI)
+    groupPolygonsLayer.addTo(map);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19
@@ -582,6 +617,13 @@ function initMap() {
     groupsLayer = L.featureGroup();
 
     map.on('click', function (e) {
+        // GESTIONE DISEGNO POLIGONO
+        if (drawingMode) {
+            tempBoundaryPoints.push([e.latlng.lat, e.latlng.lng]);
+            renderTempPolygon();
+            return;
+        }
+
         if (!pickingMode) return;
         tempLocation = e.latlng;
 
@@ -1449,6 +1491,20 @@ async function submitReport() {
 
     if (!targetGroupId && currentProfile.role !== 'coord_generale') return showMessage("Errore", "Nessun gruppo assegnato.", 'error');
 
+    // --- CONTROLLO GEOFENCING (POLIGONO) ---
+    // Se l'utente non è Coord. Generale (che può postare ovunque), controlliamo se è nel suo recinto
+    if (currentProfile.role !== 'coord_generale' && targetGroupId) {
+        const group = availableGroups.find(g => g.id === targetGroupId);
+        if (group && group.boundary_coords && group.boundary_coords.length > 2) {
+            // Verifica
+            const isInside = isPointInPolygon([tempLocation.lat, tempLocation.lng], group.boundary_coords);
+            if (!isInside) {
+                return showMessage("Fuori Zona", `Non puoi creare segnalazioni fuori dal confine del gruppo "${group.name}".`, 'error');
+            }
+        }
+    }
+    // ---------------------------------------
+
     const wkt = `POINT(${tempLocation.lng} ${tempLocation.lat})`;
 
     // CALCOLO SCADENZA (Solo se emergenza)
@@ -1510,7 +1566,11 @@ function deleteReport(id) {
 // ================= 5. GESTIONE UTENTI & GRUPPI =================
 async function loadGroups() {
     const { data } = await supabaseClient.from('groups').select('*').order('name');
-    if (data) { availableGroups = data; renderGroupsList(); }
+    if (data) {
+        availableGroups = data;
+        renderGroupsList();
+        renderAllGroupPolygons(); // Visualizza confini
+    }
 }
 
 function filterUsersByGroup(groupId) {
@@ -1894,4 +1954,129 @@ async function performForcedPasswordChange() {
 
     // Ricarichiamo la pagina per un avvio pulito
     window.location.reload();
+}
+
+// ================= GEOFENCING LOGIC =================
+
+function startDrawingBoundary() {
+    closeModal('modal-group-edit');
+    drawingMode = true;
+    tempBoundaryPoints = [];
+
+    // Setup UI
+    document.getElementById('fab-add').style.display = 'none';
+    document.getElementById('location-picker-ui').style.display = 'none';
+    document.getElementById('drawing-ui').style.display = 'block';
+
+    // Zoom sul gruppo se possibile
+    const limitLat = document.getElementById('edit-group-lat').value;
+    const limitLng = document.getElementById('edit-group-lng').value;
+    if (limitLat && limitLng) {
+        map.setView([parseFloat(limitLat), parseFloat(limitLng)], 15);
+    }
+
+    switchTab('map');
+
+    // Carica poligono esistente se c'è
+    const gid = document.getElementById('edit-group-id').value;
+    const group = availableGroups.find(g => g.id === gid);
+    if (group && group.boundary_coords) {
+        tempBoundaryPoints = [...group.boundary_coords];
+        renderTempPolygon();
+    }
+}
+
+function renderTempPolygon() {
+    if (tempPolygonLayer) map.removeLayer(tempPolygonLayer);
+
+    if (tempBoundaryPoints.length > 0) {
+        // Punti (Marker)
+        const markers = tempBoundaryPoints.map(p => L.circleMarker(p, { radius: 4, color: 'orange' }).addTo(map));
+
+        // Linea/Poligono
+        const poly = L.polygon(tempBoundaryPoints, { color: 'orange', dashArray: '5, 5' }).addTo(map);
+
+        tempPolygonLayer = L.layerGroup([...markers, poly]);
+        map.addLayer(tempPolygonLayer);
+    }
+}
+
+function undoLastPoint() {
+    if (tempBoundaryPoints.length > 0) {
+        tempBoundaryPoints.pop();
+        renderTempPolygon();
+    }
+}
+
+function cancelDrawing() {
+    drawingMode = false;
+    tempBoundaryPoints = [];
+    if (tempPolygonLayer) map.removeLayer(tempPolygonLayer);
+    document.getElementById('drawing-ui').style.display = 'none';
+    document.getElementById('fab-add').style.display = 'flex';
+    document.getElementById('modal-group-edit').style.display = 'flex';
+    switchTab('users');
+}
+
+async function saveBoundary() {
+    if (tempBoundaryPoints.length < 3) return showMessage("Errore", "Disegna almeno 3 punti per chiudere un'area.", 'error');
+
+    const gid = document.getElementById('edit-group-id').value;
+
+    const { error } = await supabaseClient.from('groups').update({
+        boundary_coords: tempBoundaryPoints
+    }).eq('id', gid);
+
+    if (error) {
+        showMessage("Errore", error.message, 'error');
+    } else {
+        showMessage("Confine Salvato", "Area di competenza aggiornata.", 'success');
+
+        // Aggiorna locale
+        const group = availableGroups.find(g => g.id === gid);
+        if (group) group.boundary_coords = tempBoundaryPoints;
+
+        loadGroups(); // Ricarica per aggiornare mappa
+        cancelDrawing(); // Chiude UI e torna modale
+    }
+}
+
+// Ray-Casting Algorithm for Point in Polygon
+function isPointInPolygon(point, vs) {
+    // point = [lat, lng]
+    // vs = [[lat, lng], [lat, lng], ...]
+    const x = point[0], y = point[1];
+
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        const xi = vs[i][0], yi = vs[i][1];
+        const xj = vs[j][0], yj = vs[j][1];
+
+        const intersect = ((yi > y) !== (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+// Renderizza i poligoni di TUTTI i gruppi sulla mappa
+function renderAllGroupPolygons() {
+    groupPolygonsLayer.clearLayers();
+
+    // Opzionale: Mostra solo il poligono del PROPRIO gruppo se si è User/Coord
+    // O tutti se si è Coord Generale?
+    // Facciamo vedere tutti i confini per chiarezza
+
+    availableGroups.forEach(g => {
+        if (g.boundary_coords && g.boundary_coords.length > 2) {
+            const poly = L.polygon(g.boundary_coords, {
+                color: '#3B82F6',
+                weight: 2,
+                fillColor: '#3B82F6',
+                fillOpacity: 0.05 // Molto leggero
+            });
+            poly.bindPopup(`Zona: <b>${g.name}</b>`);
+            groupPolygonsLayer.addLayer(poly);
+        }
+    });
 }

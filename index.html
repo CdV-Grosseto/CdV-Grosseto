@@ -217,6 +217,23 @@
                 </div>
             </div>
 
+            <!-- NUOVO: UI DISEGNO POLIGONO -->
+            <div id="drawing-ui"
+                style="display:none; position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:2000; width:90%; text-align:center;">
+                <div class="picker-controls"
+                    style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    <div id="drawing-instruction" class="instruction-box" style="margin-bottom:10px; font-weight:bold;">
+                        Tocca per aggiungere un punto</div>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button class="btn-secondary" onclick="undoLastPoint()">↩️ Indietro</button>
+                        <button class="btn-primary" onclick="saveBoundary()">💾 SALVA</button>
+                    </div>
+                    <button class="btn-secondary"
+                        style="margin-top:10px; width:100%; border:1px solid #EF4444; color:#EF4444; background:white;"
+                        onclick="cancelDrawing()">Annulla</button>
+                </div>
+            </div>
+
             <button class="map-control-btn locate-btn" onclick="locateMe()">
                 <span class="material-icons">my_location</span>
             </button>
@@ -230,6 +247,16 @@
 
         <!-- VISTA BACHECA -->
         <section id="view-list" class="view" style="display:none">
+            <!-- NUOVA BARRA DI RICERCA (BACHECA) -->
+            <div class="map-search-bar"
+                style="position: relative; top: 0; left: 0; transform: none; width: 100%; margin-bottom: 5px; box-shadow: none; border-bottom: 1px solid #eee;">
+                <span class="material-icons">search</span>
+                <input type="text" id="list-search-input" placeholder="Cerca in bacheca..."
+                    oninput="handleListSearch(this.value)">
+                <span class="material-icons" style="font-size:1.2rem; cursor:pointer;" onclick="clearListSearch()"
+                    id="clear-list-search-btn" hidden>close</span>
+            </div>
+
             <!-- BARRA FILTRI STATICA PER LA LISTA -->
             <div class="filters-bar-static">
                 <button class="filter-chip active" data-filter="all" onclick="applyFilter('all')">Tutti</button>
@@ -477,6 +504,11 @@
                 <input type="text" id="edit-group-lng" placeholder="Lng" readonly
                     style="width:60px; background:#f3f4f6; font-size:0.8rem; text-align:center;">
             </div>
+
+            <!-- NUOVO: PULSANTE DISEGNA CONFINE -->
+            <button class="btn-secondary" onclick="startDrawingBoundary()"
+                style="width:100%; margin-bottom:15px; background: #fffbeb; border:1px solid #FCD34D; color: #d97706;">✏️
+                Definisci Confine (Geofencing)</button>
 
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal('modal-group-edit')">Annulla</button>
