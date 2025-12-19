@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v85';
+const APP_VERSION = 'v86';
 
 async function checkAppVersion() {
     try {
@@ -2280,6 +2280,18 @@ async function generateUserRegistryPDF(mode, groupId) {
 }
 
 function openPrintModal() {
+    const isSuperAdmin = (currentProfile.role === 'coord_generale');
+    const isGroupCoord = (currentProfile.role === 'coord_gruppo');
+    const myGroupId = currentProfile.group_id;
+
+    // 1. Gestione permessi tasto "Registro COMPLETO"
+    const btnPrintAll = document.getElementById('btn-print-all');
+    if (btnPrintAll) {
+        btnPrintAll.style.display = isSuperAdmin ? 'flex' : 'none';
+        // Opzionale: Aggiungi un messaggio se non è admin? No, meglio nascondere.
+    }
+
+    // 2. Popolamento Select
     const select = document.getElementById('print-group-select');
     select.innerHTML = '<option value="">-- Seleziona Gruppo --</option>';
 
@@ -2287,11 +2299,23 @@ function openPrintModal() {
     const sortedGroups = [...availableGroups].sort((a, b) => a.name.localeCompare(b.name));
 
     sortedGroups.forEach(g => {
-        const o = document.createElement('option');
-        o.value = g.id;
-        o.text = g.name;
-        select.appendChild(o);
+        // Logica di filtro:
+        // - Admin vede tutti
+        // - Coord Gruppo vede SOLO il suo gruppo
+        // - Utente semplice (non dovrebbe vedere il modale, ma per sicurezza) vede solo il suo
+
+        if (isSuperAdmin || g.id === myGroupId) {
+            const o = document.createElement('option');
+            o.value = g.id;
+            o.text = g.name;
+            select.appendChild(o);
+        }
     });
+
+    // Se è coord gruppo, seleziona in automatico il suo gruppo per comodità
+    if (isGroupCoord && myGroupId) {
+        select.value = myGroupId;
+    }
 
     document.getElementById('modal-print-options').style.display = 'flex';
 }
