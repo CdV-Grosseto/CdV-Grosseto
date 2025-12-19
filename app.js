@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v83';
+const APP_VERSION = 'v84';
 
 async function checkAppVersion() {
     try {
@@ -1491,17 +1491,29 @@ function setCategory(cat, btn) {
 
 
 async function submitReport() {
+    const btn = document.getElementById('btn-submit-report');
+    if (btn) { btn.disabled = true; btn.innerText = 'Attendere...'; }
+
     const desc = document.getElementById('report-desc').value;
-    if (!desc || !tempLocation) return showMessage("Dati mancanti", "Inserisci una descrizione e un punto.", 'error');
+    if (!desc || !tempLocation) {
+        if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
+        return showMessage("Dati mancanti", "Inserisci una descrizione e un punto.", 'error');
+    }
 
     let targetGroupId = currentProfile.group_id;
 
     if (currentProfile.role === 'coord_generale') {
         targetGroupId = document.getElementById('report-group-select').value;
-        if (!targetGroupId) return showMessage("Gruppo Mancante", "Come Admin, devi specificare a quale gruppo appartiene questa segnalazione.", 'error');
+        if (!targetGroupId) {
+            if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
+            return showMessage("Gruppo Mancante", "Come Admin, devi specificare a quale gruppo appartiene questa segnalazione.", 'error');
+        }
     }
 
-    if (!targetGroupId && currentProfile.role !== 'coord_generale') return showMessage("Errore", "Nessun gruppo assegnato.", 'error');
+    if (!targetGroupId && currentProfile.role !== 'coord_generale') {
+        if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
+        return showMessage("Errore", "Nessun gruppo assegnato.", 'error');
+    }
 
     // --- CONTROLLO GEOFENCING (POLIGONO) ---
     // Se l'utente non è Coord. Generale (che può postare ovunque), controlliamo se è nel suo recinto
@@ -1511,6 +1523,7 @@ async function submitReport() {
             // Verifica
             const isInside = isPointInPolygon([tempLocation.lat, tempLocation.lng], group.boundary_coords);
             if (!isInside) {
+                if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
                 return showMessage("Fuori Zona", `Non puoi creare segnalazioni fuori dal confine del gruppo "${group.name}".`, 'error');
             }
         }
@@ -1540,8 +1553,12 @@ async function submitReport() {
         expires_at: expiresAt
     }).select().single();
 
-    if (error) showMessage("Errore Invio", error.message, 'error');
+    if (error) {
+        if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
+        showMessage("Errore Invio", error.message, 'error');
+    }
     else {
+        if (btn) { btn.disabled = false; btn.innerText = 'INVIA'; }
         showMessage("Ottimo", "Segnalazione inviata con successo!", 'success');
         closeModal('modal-report');
         document.getElementById('report-desc').value = '';
