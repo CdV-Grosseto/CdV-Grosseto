@@ -286,7 +286,7 @@ input, textarea, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px
 .btn-print { background: #607d8b; }
 
 /* Admin */
-.group-mgmt-box { background: #fffbeb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fcd34d; display: none; }
+.group-mgmt-box { background: #fffbeb; padding: 15px; border-radius: 8px; margin-bottom: 5px; border: 1px solid #fcd34d; display: none; }
 .stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
 .stats-table th, .stats-table td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
 .stats-table th { background: #f9f9f9; color: #666; }

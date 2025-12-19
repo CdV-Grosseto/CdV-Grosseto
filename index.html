@@ -347,16 +347,36 @@
                         </div>
                     </details>
                 </div>
-                <h3>Utenti Gestiti</h3>
-                <div id="users-list">
-                    <p class="loading-text">Caricamento utenti...</p>
-                </div>
             </div>
-        </section>
 
-        <button id="fab-add" class="fab" onclick="startLocationPick()" style="display:none">
-            <span class="material-icons">add</span>
-        </button>
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; margin-bottom:5px;">
+                <h3>Utenti Gestiti</h3>
+                <button class="btn-small btn-primary" onclick="openPrintModal()" title="Opzioni Stampa PDF"
+                    style="width: auto; flex: none;">
+                    <span class="material-icons">print</span> Stampe PDF
+                </button>
+            </div>
+
+            <!-- BARRA RICERCA UTENTI -->
+            <div
+                style="margin-bottom:15px; background:white; border:1px solid #ddd; border-radius:8px; padding:5px 10px; display:flex; align-items:center; gap:10px;">
+                <span class="material-icons" style="color:#666">search</span>
+                <input type="text" id="user-mgmt-search" placeholder="Cerca utente (nome, email, tel)..."
+                    style="border:none; outline:none; flex-grow:1; font-size:1rem; padding:5px;"
+                    oninput="handleUserSearch(this.value)">
+                <span class="material-icons" style="font-size:1.2rem; cursor:pointer; display:none; color:#666"
+                    onclick="clearUserSearch()" id="clear-user-search-btn">close</span>
+            </div>
+            <div id="users-list">
+                <p class="loading-text">Caricamento utenti...</p>
+            </div>
+    </div>
+    </section>
+
+    <button id="fab-add" class="fab" onclick="startLocationPick()" style="display:none">
+        <span class="material-icons">add</span>
+    </button>
 
     </div>
 
@@ -683,6 +703,38 @@
 
             <audio id="siren-sound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
                 preload="auto"></audio>
+        </div>
+    </div>
+
+    <!-- MODALE OPZIONI STAMPA (ADMIN) -->
+    <div id="modal-print-options" class="modal">
+        <div class="modal-content">
+            <h3>🖨️ Stampe Registri</h3>
+            <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">Seleziona il tipo di documento da generare.</p>
+
+            <button class="btn-primary"
+                style="width:100%; margin-bottom:20px; display:flex; justify-content:center; align-items:center; gap:10px;"
+                onclick="generateUserRegistryPDF('all')">
+                <span class="material-icons">library_books</span> Registro COMPLETO (Tutti)
+            </button>
+
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+
+            <label style="font-weight:bold;">Stampa per Gruppo Specifico</label>
+            <select id="print-group-select"
+                style="width:100%; padding:10px; margin-top:5px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
+                <option value="">-- Seleziona Gruppo --</option>
+            </select>
+
+            <button class="btn-secondary"
+                style="width:100%; border:1px solid var(--primary); color:var(--primary-dark);"
+                onclick="printSelectedGroup()">
+                <span class="material-icons" style="font-size:1rem; vertical-align:middle;">print</span> Scarica
+                Registro Gruppo
+            </button>
+
+            <button class="btn-secondary" style="width:100%; margin-top:20px;"
+                onclick="closeModal('modal-print-options')">Chiudi</button>
         </div>
     </div>
 

@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v72';
+const APP_VERSION = 'v77';
 
 async function checkAppVersion() {
     try {
@@ -73,6 +73,7 @@ let groupPolygonsLayer = new L.LayerGroup();
 
 // Nuovi Filtri
 let currentSearchText = '';
+let userSearchText = ''; // NUOVO: Ricerca Utenti Admin
 let currentDateFilter = 'all';
 let includeArchived = false; // NUOVO STATO PER ARCHIVIO
 
@@ -1612,6 +1613,9 @@ function renderGroupsList() {
         div.innerHTML = `
             <span onclick="filterUsersByGroup('${g.id}')" style="cursor:pointer; flex-grow:1; display:block;">${g.name}</span>
             <div style="display:flex; gap:5px;">
+                <button class="btn-small btn-primary" onclick="generateUserRegistryPDF('group', '${g.id}')" title="Sampa Registro Gruppo">
+                   <span class="material-icons" style="font-size:1rem">print</span>
+                </button>
                 <button class="btn-small btn-edit" onclick="openEditGroup('${g.id}')">✏️</button>
                 <button class="btn-small btn-delete" onclick="deleteGroup('${g.id}')">🗑️</button>
             </div>
@@ -1729,6 +1733,17 @@ async function loadUsers() {
     let displayUsers = users;
     if (currentProfile.role === 'coord_generale' && selectedGroupIdFilter) {
         displayUsers = users.filter(u => u.group_id === selectedGroupIdFilter);
+    }
+
+    // NUOVO: FILTRO RICERCA TESTUALE UTENTI
+    if (userSearchText && userSearchText.trim().length > 0) {
+        const term = userSearchText.toLowerCase();
+        displayUsers = displayUsers.filter(u => {
+            const name = (u.full_name || '').toLowerCase();
+            const mail = (u.email || '').toLowerCase();
+            const tel = (u.phone || '').toLowerCase();
+            return name.includes(term) || mail.includes(term) || tel.includes(term);
+        });
     }
 
     let unassignedHtml = '', assignedHtml = '';
@@ -2098,4 +2113,153 @@ function renderAllGroupPolygons() {
             groupPolygonsLayer.addLayer(poly);
         }
     });
+}
+
+// ===============================================
+// NUOVO: RICERCA & EXPORT PDF (ADMIN)
+// ===============================================
+
+function handleUserSearch(val) {
+    userSearchText = val;
+    const cleanBtn = document.getElementById('clear-user-search-btn');
+    if (cleanBtn) cleanBtn.style.display = val.length > 0 ? 'block' : 'none';
+    loadUsers();
+}
+
+function clearUserSearch() {
+    userSearchText = '';
+    document.getElementById('user-mgmt-search').value = '';
+    handleUserSearch('');
+}
+
+async function generateUserRegistryPDF(mode, groupId) {
+    // Chiudi modale se aperto
+    closeModal('modal-print-options');
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // 1. Recupero dati
+    let usersToPrint = [];
+
+    // Devo prendere TUTTI gli utenti (potrei dover fare una query se loadUsers filtra, ma abbiamo allReportsCache... no users non è in cache globale comoda)
+    // Facciamo una query fresh per essere sicuri
+    const { data: allUsers } = await supabaseClient.from('profiles').select('*').order('full_name');
+    if (!allUsers) return showMessage("Errore", "Impossibile scaricare lista utenti", "error");
+
+    let titleSubtitle = "";
+
+    if (mode === 'all') {
+        usersToPrint = allUsers;
+        titleSubtitle = "Registro Completo Utenti (Tutti i Gruppi)";
+    } else if (mode === 'group' && groupId) {
+        usersToPrint = allUsers.filter(u => u.group_id === groupId);
+        const gName = availableGroups.find(g => g.id === groupId)?.name || "Sconosciuto";
+        titleSubtitle = `Registro Utenti - Gruppo: ${gName}`;
+    }
+
+    // 2. Ordinamento per Gruppo poi Nome
+    usersToPrint.sort((a, b) => {
+        // Se stesso gruppo, ordina per nome
+        if (a.group_id === b.group_id) return (a.full_name || "").localeCompare(b.full_name || "");
+        // Altrimenti ordina per gruppo (i null/generale in fondo o in cima)
+        return (a.group_id || "").localeCompare(b.group_id || "");
+    });
+
+    // 3. Intestazione Header (Stile Report)
+    doc.setFontSize(22);
+    doc.setTextColor(245, 158, 11); // Colore Ambra/Orange
+    doc.text("C.d.V Grosseto - Report", 10, 20);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 10, 30);
+    doc.text(`Autore Report: ${currentProfile.full_name}`, 10, 36);
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(titleSubtitle, 10, 50);
+
+    // 4. Tabella Dati
+    let yPos = 65;
+    const pageHeight = doc.internal.pageSize.height;
+
+    // Intestazione Tabella
+    doc.setFontSize(10);
+    doc.setFillColor(224, 242, 254); // Light Blue header
+    doc.rect(10, yPos - 6, 190, 8, 'F');
+    doc.text("Utente", 12, yPos);
+    doc.text("Email", 70, yPos);
+    doc.text("Telefono", 130, yPos);
+    doc.text("Ruolo", 160, yPos);
+
+    yPos += 10;
+    doc.setFont("helvetica", "normal");
+
+    let currentGroupHeader = null;
+
+    usersToPrint.forEach(u => {
+        if (yPos > pageHeight - 20) { doc.addPage(); yPos = 20; }
+
+        // Se stampiamo "all", mostriamo separatori di gruppo
+        if (mode === 'all') {
+            const gName = availableGroups.find(g => g.id === u.group_id)?.name || "Non Assegnato / Generale";
+            if (gName !== currentGroupHeader) {
+                if (yPos > pageHeight - 25) { doc.addPage(); yPos = 20; }
+                yPos += 5;
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(30, 64, 175); // Dark Blue
+                doc.text(`> ${gName}`, 10, yPos);
+                doc.setDrawColor(200);
+                doc.line(10, yPos + 2, 200, yPos + 2);
+                doc.setTextColor(0);
+                doc.setFont("helvetica", "normal");
+                yPos += 10;
+                currentGroupHeader = gName;
+            }
+        }
+
+        const name = u.full_name || "Senza Nome";
+        const email = u.email || "-";
+        const phone = u.phone || "-";
+        const role = u.role === 'coord_generale' ? 'SUPER ADMIN' : (u.role === 'coord_gruppo' ? 'Coord. Gruppo' : 'Utente');
+
+        // Riga alternata? Opzionale.
+        doc.text(name, 12, yPos);
+
+        // Tronca email lunghe
+        let safeEmail = email.length > 30 ? email.substring(0, 28) + "..." : email;
+        doc.text(safeEmail, 70, yPos);
+
+        doc.text(phone, 130, yPos);
+        doc.text(role, 160, yPos);
+
+        yPos += 8;
+    });
+
+    doc.save(`CDV_Registro_Utenti_${mode}.pdf`);
+    showMessage("Download", "Il PDF è stato generato.", "success");
+}
+
+function openPrintModal() {
+    const select = document.getElementById('print-group-select');
+    select.innerHTML = '<option value="">-- Seleziona Gruppo --</option>';
+
+    // Ordina gruppi per nome
+    const sortedGroups = [...availableGroups].sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedGroups.forEach(g => {
+        const o = document.createElement('option');
+        o.value = g.id;
+        o.text = g.name;
+        select.appendChild(o);
+    });
+
+    document.getElementById('modal-print-options').style.display = 'flex';
+}
+
+function printSelectedGroup() {
+    const gid = document.getElementById('print-group-select').value;
+    if (!gid) return showMessage("Attenzione", "Seleziona un gruppo dalla lista.", "error");
+    generateUserRegistryPDF('group', gid);
 }
