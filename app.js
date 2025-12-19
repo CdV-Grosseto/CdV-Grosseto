@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v67';
+const APP_VERSION = 'v68';
 
 async function checkAppVersion() {
     try {
@@ -2079,9 +2079,10 @@ function renderAllGroupPolygons() {
                 color: '#3B82F6',
                 weight: 2,
                 fillColor: '#3B82F6',
-                fillOpacity: 0.05 // Molto leggero
+                fillOpacity: 0.05, // Molto leggero
+                interactive: false // PERMETTE AI CLICK DI PASSARE ALLA MAPPA SOTTOSTANTE
             });
-            poly.bindPopup(`Zona: <b>${g.name}</b>`);
+            // poly.bindPopup(`Zona: <b>${g.name}</b>`);
             groupPolygonsLayer.addLayer(poly);
         }
     });
