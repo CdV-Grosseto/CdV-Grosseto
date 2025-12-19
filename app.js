@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v84';
+const APP_VERSION = 'v85';
 
 async function checkAppVersion() {
     try {
@@ -393,6 +393,17 @@ async function handleLoginSuccess(user) {
 
     if (profile) {
         currentProfile = profile;
+
+        // AGGIORNAMENTO TRACCIAMENTO ACCESSI
+        const newCount = (currentProfile.access_count || 0) + 1;
+        // Aggiorniamo senza attendere (fire-and-forget) per non rallentare l'accesso
+        supabaseClient.from('profiles').update({
+            last_access: new Date().toISOString(),
+            access_count: newCount
+        }).eq('id', user.id).then(({ error }) => {
+            if (error) console.warn("Errore aggiornamento tracking:", error);
+        });
+
     } else {
         showMessage("Errore", "Impossibile caricare il profilo.", 'error');
         return;
@@ -1385,15 +1396,27 @@ async function generateDossierPDF() {
     yPos += 10;
 
     selectedReports.forEach((r, i) => {
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
+        // --- CALCOLO ALTEZZA DINAMICA ---
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "italic");
+        const descSplit = doc.splitTextToSize(r.description, 180);
+
+        const lineHeight = 5; // mm approx per riga
+        const descHeight = Math.max(descSplit.length * lineHeight, 10);
+        const headerHeight = 30; // Spazio per intestazioni
+        const boxHeight = headerHeight + descHeight;
+
+        // Controllo Page Break
+        if (yPos + boxHeight > 280) { doc.addPage(); yPos = 20; }
 
         const coords = parseCoordinates(r);
         const locationStr = coords ? `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}` : "Posizione non disp.";
         const author = profilesCache[r.user_id] || "N/D";
         const dateStr = new Date(r.created_at).toLocaleString('it-IT');
 
+        // Box Sfondo Dinamico
         doc.setFillColor(245, 245, 245);
-        doc.rect(10, yPos, 190, 35, 'F');
+        doc.rect(10, yPos, 190, boxHeight, 'F');
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
@@ -1405,10 +1428,9 @@ async function generateDossierPDF() {
         doc.text(`Segnalato da: ${author}`, 15, yPos + 20);
 
         doc.setFont("helvetica", "italic");
-        const descSplit = doc.splitTextToSize(r.description, 180);
         doc.text(descSplit, 15, yPos + 28);
 
-        yPos += 40;
+        yPos += boxHeight + 5; // Incremento dinamico + margine
     });
 
     doc.save("CDV_Dossier.pdf");

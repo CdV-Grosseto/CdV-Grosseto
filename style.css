@@ -846,3 +846,122 @@ select {
     font-weight: bold;
     flex-shrink: 0;
 }
+
+/* =========================================
+   STILI DI STAMPA (FIX PDF REPORT)
+   ========================================= */
+@media print {
+
+    /* RESET GLOBALE PER STAMPA */
+    body,
+    .view,
+    #app-container,
+    .main-content {
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+
+    /* NASCONDI ELEMENTI INTERFACCIA NON NECESSARI */
+    .sidebar,
+    #navbar,
+    .fab,
+    .fab-dossier,
+    .filters-bar,
+    .filters-bar-static,
+    .map-search-bar,
+    .btn-stats,
+    .map-control-btn,
+    .dossier-toolbar,
+    .report-badges,
+    #loader,
+    #login-overlay,
+    .btn-action,
+    .btn,
+    /* Nasconde bottoni generici */
+    .material-icons,
+    /* Nasconde icone per pulizia */
+    .input-group,
+    select {
+        display: none !important;
+    }
+
+    /* SPECIFICI PER TABELLA REPORT */
+    #view-reports {
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    .card-box {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        display: table !important;
+    }
+
+    /* FIX SPECIFICO PER BOOTSTRAP TABLE-RESPONSIVE */
+    .table-responsive {
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    /* EVITA IL TAGLIO DELLE RIGHE A METÀ */
+    tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        height: auto !important;
+    }
+
+    /* ESPANDI IL TESTO (NO TRUNCATE) */
+    #table-reports td div {
+        max-width: none !important;
+        width: 100% !important;
+        height: auto !important;
+        white-space: normal !important;
+        font-size: 10pt !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    /* RIMUOVI SFONDI PER EVITARE BOX GRIGI */
+    tr,
+    td,
+    th {
+        background-color: transparent !important;
+    }
+
+    /* RIMUOVI COLONNA AZIONI (L'ultima) */
+    #table-reports th:last-child,
+    #table-reports td:last-child {
+        display: none !important;
+    }
+
+    /* LAYOUT PIÙ COMPATTO */
+    .table td,
+    .table th {
+        padding: 4px 8px !important;
+        border: 1px solid #ddd !important;
+    }
+
+    /* HEADER DI STAMPA PERSONALIZZATO */
+    .main-content::before {
+        content: "Report Segnalazioni C.d.V.";
+        display: block;
+        font-size: 18pt;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        color: black;
+    }
+}
