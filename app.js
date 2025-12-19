@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v66';
+const APP_VERSION = 'v67';
 
 async function checkAppVersion() {
     try {
@@ -2043,14 +2043,20 @@ async function saveBoundary() {
 
 // Ray-Casting Algorithm for Point in Polygon
 function isPointInPolygon(point, vs) {
-    // point = [lat, lng]
-    // vs = [[lat, lng], [lat, lng], ...]
-    const x = point[0], y = point[1];
+    // point = [lat, lng] OR {lat, lng}
+    // vs = [[lat, lng], [lat, lng], ...] OR [{lat, lng}, {lat, lng}, ...]
+
+    // Normalize point
+    const x = (Array.isArray(point)) ? point[0] : point.lat;
+    const y = (Array.isArray(point)) ? point[1] : point.lng;
 
     let inside = false;
     for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        const xi = vs[i][0], yi = vs[i][1];
-        const xj = vs[j][0], yj = vs[j][1];
+        // Normalize vertices
+        const xi = (Array.isArray(vs[i])) ? vs[i][0] : vs[i].lat;
+        const yi = (Array.isArray(vs[i])) ? vs[i][1] : vs[i].lng;
+        const xj = (Array.isArray(vs[j])) ? vs[j][0] : vs[j].lat;
+        const yj = (Array.isArray(vs[j])) ? vs[j][1] : vs[j].lng;
 
         const intersect = ((yi > y) !== (yj > y))
             && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
