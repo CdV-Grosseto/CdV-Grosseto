@@ -190,12 +190,13 @@
         <section id="view-map" class="view" style="display:none">
 
             <!-- NUOVA BARRA DI RICERCA -->
-            <div class="map-search-bar">
+            <div class="map-search-bar" style="position:relative;">
                 <span class="material-icons">search</span>
-                <input type="text" id="map-search-input" placeholder="Cerca (targa, via, colore...)"
+                <input type="text" id="map-search-input" placeholder="Cerca (targa, via, @autore...)"
                     oninput="handleSearch(this.value)">
                 <span class="material-icons" style="font-size:1.2rem; cursor:pointer;" onclick="clearSearch()"
                     id="clear-search-btn" hidden>close</span>
+                <div id="map-search-autocomplete" class="autocomplete-items"></div>
             </div>
 
             <div class="filters-bar">
@@ -261,10 +262,11 @@
             <div class="map-search-bar"
                 style="position: relative; top: 0; left: 0; transform: none; width: 100%; margin-bottom: 5px; box-shadow: none; border-bottom: 1px solid #eee;">
                 <span class="material-icons">search</span>
-                <input type="text" id="list-search-input" placeholder="Cerca in bacheca..."
+                <input type="text" id="list-search-input" placeholder="Cerca in bacheca (@autore...)"
                     oninput="handleListSearch(this.value)">
                 <span class="material-icons" style="font-size:1.2rem; cursor:pointer;" onclick="clearListSearch()"
                     id="clear-list-search-btn" hidden>close</span>
+                <div id="list-search-autocomplete" class="autocomplete-items"></div>
             </div>
 
             <!-- BARRA FILTRI STATICA PER LA LISTA -->
@@ -592,6 +594,28 @@
         </div>
     </div>
 
+    <!-- MODALE UPDATE INFO (Presentazione Novità) -->
+    <div id="modal-update-info" class="modal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
+            <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Piattaforma Aggiornata!</h3>
+            <p style="font-weight: bold; color: #555;">Versione v83</p>
+
+            <div
+                style="text-align: left; background: #f9fafb; padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e5e7eb;">
+                <p style="margin-bottom:8px"><b>Novità principali:</b></p>
+                <ul style="padding-left: 20px; color: #374151; line-height: 1.5;">
+                    <li>🔍 <b>Ricerca Autore:</b> Digita <code>@</code> nella barra di ricerca per filtrare le
+                        segnalazioni per utente.</li>
+                    <li>🏎️ <b>Migliorie:</b> Grafica rinnovata e correzioni minori.</li>
+                </ul>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px;"
+                onclick="dismissUpdateModal()">Ho Capito, grazie!</button>
+        </div>
+    </div>
+
     <div id="modal-confirm" class="modal" style="z-index: 6000;">
         <div class="modal-content" style="text-align: center;">
             <span class="material-icons"
@@ -746,7 +770,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="app.js?v=79"></script>
+    <script src="app.js?v=83"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     </script>

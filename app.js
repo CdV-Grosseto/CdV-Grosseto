@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v79';
+const APP_VERSION = 'v83';
 
 async function checkAppVersion() {
     try {
@@ -243,7 +243,10 @@ function openPolicyModal() {
 // ================= 1. AUTENTICAZIONE =================
 async function checkSession() {
     const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) handleLoginSuccess(session.user);
+    if (session) {
+        handleLoginSuccess(session.user);
+        checkUpdateAck(); // CONTROLLO GIORNALIERO/VERSIONE
+    }
 }
 checkSession();
 
@@ -921,49 +924,44 @@ function getFilteredReports() {
 
 
     if (currentSearchText && currentSearchText.length > 0) {
-        const tokens = currentSearchText.split(/\s+/).filter(t => t.length > 0);
+        // NUOVO: FILTRO PER AUTORE (@Nome)
+        if (currentSearchText.startsWith('@')) {
+            const authorQuery = currentSearchText.substring(1).toLowerCase().trim();
+            reports = reports.filter(r => {
+                const authorName = (profilesCache[r.user_id] || '').toLowerCase();
+                return authorName.includes(authorQuery);
+            });
+        } else {
+            // RICERCA STANDARD
+            const tokens = currentSearchText.split(/\s+/).filter(t => t.length > 0);
 
-        reports = reports.filter(r => {
-            const desc = (r.description || '').toLowerCase();
-            const author = (profilesCache[r.user_id] || '').toLowerCase();
-            const fullText = desc + " " + author;
+            reports = reports.filter(r => {
+                const desc = (r.description || '').toLowerCase();
+                const author = (profilesCache[r.user_id] || '').toLowerCase();
+                const fullText = desc + " " + author;
+                const descWords = desc.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").split(/\s+/);
 
-            // NEW: Ricerca "Fuzzy" Intelligente
-            // Divide la descrizione in parole singole per confronto mirato
-            const descWords = desc.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").split(/\s+/);
-
-            return tokens.every(token => {
-                // 1. Match Esatto (il più veloce)
-                if (fullText.includes(token)) return true;
-
-                // 2. Espansione Sinonimi & Controllo Fuzzy
-                let allVariants = [token];
-
-                // Trova sinonimi
-                for (const group of SYNONYM_GROUPS) {
-                    if (group.includes(token)) {
-                        allVariants = [...allVariants, ...group];
-                        break; // Trovato il gruppo, non serve cercarne altri
+                return tokens.every(token => {
+                    if (fullText.includes(token)) return true;
+                    let allVariants = [token];
+                    for (const group of SYNONYM_GROUPS) {
+                        if (group.includes(token)) {
+                            allVariants = [...allVariants, ...group];
+                            break;
+                        }
                     }
-                }
-
-                // Controlla se una variante "matcha" una parola del testo (con tolleranza refusi)
-                return allVariants.some(variant => {
-                    // Controlla substring diretta della variante
-                    if (fullText.includes(variant)) return true;
-
-                    // Controlla distanza di Levenshtein sulle singole parole
-                    return descWords.some(word => {
-                        // Tolleranza: 0 per parole corte (<4), 1 per medie (4-6), 2 per lunghe (>6)
-                        let threshold = 1;
-                        if (variant.length < 4) threshold = 0;
-                        if (variant.length > 6) threshold = 2;
-
-                        return levenshtein(word, variant) <= threshold;
+                    return allVariants.some(variant => {
+                        if (fullText.includes(variant)) return true;
+                        return descWords.some(word => {
+                            let threshold = 1;
+                            if (variant.length < 4) threshold = 0;
+                            if (variant.length > 6) threshold = 2;
+                            return levenshtein(word, variant) <= threshold;
+                        });
                     });
                 });
             });
-        });
+        }
     }
 
     if (currentDateFilter !== 'all') {
@@ -2280,4 +2278,104 @@ function checkUpdateAck() {
 function dismissUpdateModal() {
     localStorage.setItem('last_ack_version', APP_VERSION);
     closeModal('modal-update-info');
+}
+
+// ===============================================
+// AUTOCOMPLETE RICERCA AUTORE
+// ===============================================
+
+function getAvailableAuthors() {
+    const authors = new Set();
+    allReportsCache.forEach(r => {
+        const name = profilesCache[r.user_id];
+        if (name) authors.add(name);
+    });
+    return Array.from(authors).sort();
+}
+
+function handleAutocomplete(inpId, containerId, val, callback) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    container.style.display = 'none';
+
+    if (!val.startsWith('@')) {
+        return;
+    }
+
+    const query = val.substring(1).toLowerCase(); // Rimuove @
+    const authors = getAvailableAuthors();
+    const matches = authors.filter(a => a.toLowerCase().includes(query));
+
+    if (matches.length === 0) {
+        return;
+    }
+
+    container.style.display = 'block';
+
+    matches.forEach(author => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+
+        // Initials
+        const initials = author.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+        div.innerHTML = `
+            <div class="auth-avatar-small">${initials}</div>
+            <div><b>${author}</b></div>
+        `;
+        div.onclick = function () {
+            document.getElementById(inpId).value = '@' + author;
+            document.getElementById(inpId).value = '@' + author;
+            container.innerHTML = '';
+            container.style.display = 'none';
+            callback('@' + author);
+        };
+        container.appendChild(div);
+    });
+}
+
+// Override Handler Map
+function handleSearch(val) {
+    currentSearchText = val;
+
+    // Gestione UI Clear
+    const cleanBtn = document.getElementById('clear-search-btn');
+    if (cleanBtn) cleanBtn.style.display = val.length > 0 ? 'inline-block' : 'none';
+
+    // Autocomplete
+    handleAutocomplete('map-search-input', 'map-search-autocomplete', val, (selected) => {
+        currentSearchText = selected;
+        renderMapMarkers();
+    });
+
+    renderMapMarkers();
+}
+
+function clearSearch() {
+    currentSearchText = '';
+    document.getElementById('map-search-input').value = '';
+    document.getElementById('map-search-autocomplete').innerHTML = '';
+    handleSearch('');
+}
+
+// Override Handler List
+function handleListSearch(val) {
+    currentSearchText = val;
+
+    const cleanBtn = document.getElementById('clear-list-search-btn');
+    if (cleanBtn) cleanBtn.style.display = val.length > 0 ? 'inline-block' : 'none';
+
+    handleAutocomplete('list-search-input', 'list-search-autocomplete', val, (selected) => {
+        currentSearchText = selected;
+        renderReportsList();
+    });
+
+    renderReportsList();
+}
+
+function clearListSearch() {
+    currentSearchText = '';
+    document.getElementById('list-search-input').value = '';
+    document.getElementById('list-search-autocomplete').innerHTML = '';
+    handleListSearch('');
 }
