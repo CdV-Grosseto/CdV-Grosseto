@@ -111,6 +111,12 @@
 
                 <!-- Contenitore Utente & Logout -->
                 <div style="display:flex; align-items:center; gap:10px;">
+                    <!-- LINK MANUALE ISTRUZIONI -->
+                    <a href="https://cdv-grosseto.github.io/ManualeAppCdV/" target="_blank"
+                        style="color:white; text-decoration:none; display:flex; align-items:center;"
+                        title="Manuale Istruzioni">
+                        <span class="material-icons">menu_book</span>
+                    </a>
                     <span id="nav-user-name" style="font-size:0.9rem; font-weight:500; display:none"></span>
                     <button id="btn-notifications" class="btn-text"
                         style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;"
@@ -684,7 +690,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="app.js?v=70"></script>
+    <script src="app.js?v=72"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     </script>
