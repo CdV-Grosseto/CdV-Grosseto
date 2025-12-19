@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v68';
+const APP_VERSION = 'v71';
 
 async function checkAppVersion() {
     try {
@@ -74,6 +74,7 @@ let groupPolygonsLayer = new L.LayerGroup();
 // Nuovi Filtri
 let currentSearchText = '';
 let currentDateFilter = 'all';
+let includeArchived = false; // NUOVO STATO PER ARCHIVIO
 
 // Stato Dossier
 let isDossierMode = false;
@@ -196,6 +197,12 @@ function toggleDateFilter() {
         else btn.classList.remove('date-active');
     });
 
+    renderMapMarkers();
+    if (document.getElementById('view-list').style.display === 'block') renderReportsList();
+}
+
+function toggleArchivedSearch(checkbox) {
+    includeArchived = checkbox.checked;
     renderMapMarkers();
     if (document.getElementById('view-list').style.display === 'block') renderReportsList();
 }
@@ -434,6 +441,8 @@ async function handleLoginSuccess(user) {
         if (currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo') {
             document.getElementById('tab-users').style.display = 'block';
             document.getElementById('admin-archive-section').style.display = 'block';
+            // NEW v71: Mostra il filtro archiviati nella bacheca
+            document.getElementById('filter-archived-container').style.display = 'flex';
             loadArchive();
         }
         if (currentProfile.role === 'coord_generale') {
@@ -890,7 +899,10 @@ function getFilteredReports() {
         // (Status NON archiviata O Categoria è Emergenza)
         // Nota: Un'emergenza archiviata manualmente dall'admin deve sparire? 
         // Sì, se è archiviata è chiusa. Quindi rimuoviamo sempre le archiviate qui.
-        reports = reports.filter(r => r.status !== 'archiviata');
+        // MODIFICA v69: Se includeArchived è true, SALTARIAMO questo filtro
+        if (!includeArchived) {
+            reports = reports.filter(r => r.status !== 'archiviata');
+        }
 
         // 4. FILTRO CATEGORIA / STATO
         if (currentFilter !== 'all') {
