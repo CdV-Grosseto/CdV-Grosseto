@@ -107,25 +107,29 @@
             </div>
 
             <div class="nav-content">
-                <span class="nav-title">C.d.V Grosseto</span>
+                <div class="nav-row-1">
+                    <span class="nav-title">C.d.V Grosseto</span>
+                </div>
 
-                <!-- Contenitore Utente & Logout -->
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <!-- LINK MANUALE ISTRUZIONI -->
-                    <a href="https://cdv-grosseto.github.io/ManualeAppCdV/" target="_blank"
-                        style="color:white; text-decoration:none; display:flex; align-items:center;"
-                        title="Manuale Istruzioni">
-                        <span class="material-icons">menu_book</span>
-                    </a>
-                    <span id="nav-user-name" style="font-size:0.9rem; font-weight:500; display:none"></span>
-                    <button id="btn-notifications" class="btn-text"
-                        style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;"
-                        onclick="subscribeToPush()">
-                        <span class="material-icons" id="icon-notif">notifications_none</span>
-                    </button>
-                    <button id="btn-logout" class="btn-text"
-                        style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;"
-                        onclick="handleLogout()">Esci</button>
+                <div class="nav-row-2">
+                    <!-- Contenitore Utente & Logout - Spostato in riga 2 -->
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <!-- LINK MANUALE ISTRUZIONI -->
+                        <a href="https://cdv-grosseto.github.io/ManualeAppCdV/" target="_blank"
+                            style="color:white; text-decoration:none; display:flex; align-items:center;"
+                            title="Manuale Istruzioni">
+                            <span class="material-icons">menu_book</span>
+                        </a>
+                        <span id="nav-user-name" style="font-size:0.9rem; font-weight:500; display:none"></span>
+                        <button id="btn-notifications" class="btn-text"
+                            style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;"
+                            onclick="subscribeToPush()">
+                            <span class="material-icons" id="icon-notif">notifications_none</span>
+                        </button>
+                        <button id="btn-logout" class="btn-text"
+                            style="display:none; background:none; border:none; color:white; font-weight:bold; cursor:pointer;"
+                            onclick="handleLogout()">Esci</button>
+                    </div>
                 </div>
             </div>
             <div id="nav-tabs" class="tabs" style="display:none">
@@ -350,7 +354,7 @@
             </div>
 
             <div
-                style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; margin-bottom:5px;">
+                style="display:flex; justify-content:space-between; align-items:center; margin-top:0px; margin-bottom:5px;">
                 <h3>Utenti Gestiti</h3>
                 <button class="btn-small btn-primary" onclick="openPrintModal()" title="Opzioni Stampa PDF"
                     style="width: auto; flex: none;">

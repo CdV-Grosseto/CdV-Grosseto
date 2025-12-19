@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v77';
+const APP_VERSION = 'v79';
 
 async function checkAppVersion() {
     try {
@@ -41,6 +41,7 @@ async function checkAppVersion() {
 }
 // Controllo all'avvio
 checkAppVersion();
+checkUpdateAck(); // Controllo Modale Novità
 // Controllo al ritorno in focus
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkAppVersion();
@@ -2262,4 +2263,21 @@ function printSelectedGroup() {
     const gid = document.getElementById('print-group-select').value;
     if (!gid) return showMessage("Attenzione", "Seleziona un gruppo dalla lista.", "error");
     generateUserRegistryPDF('group', gid);
+}
+
+// --- GESTIONE MODALE AGGIORNAMENTO ---
+function checkUpdateAck() {
+    const lastAck = localStorage.getItem('last_ack_version');
+    if (lastAck !== APP_VERSION) {
+        // Mostra modale dopo breve delay per caricamento UI
+        setTimeout(() => {
+            const modal = document.getElementById('modal-update-info');
+            if (modal) modal.style.display = 'flex';
+        }, 1000);
+    }
+}
+
+function dismissUpdateModal() {
+    localStorage.setItem('last_ack_version', APP_VERSION);
+    closeModal('modal-update-info');
 }
