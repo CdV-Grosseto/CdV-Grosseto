@@ -170,6 +170,27 @@
                         <input type="text" id="signup-name" placeholder="Nome e Cognome" required>
                         <input type="email" id="signup-email" placeholder="Email" required>
                         <input type="password" id="signup-password" placeholder="Crea Password (min 6 car.)" required>
+
+                        <!-- NUOVI CAMPI OBBLIGATORI -->
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="signup-address" placeholder="Indirizzo (Via/Piazza)" required
+                                style="flex:2">
+                            <input type="text" id="signup-civic" placeholder="N. Civico" required style="flex:1">
+                        </div>
+                        <input type="tel" id="signup-phone" placeholder="Cellulare" required>
+
+                        <!-- CONSENSO PRIVACY -->
+                        <div
+                            style="background:#fffbeb; padding:10px; border-radius:6px; margin:10px 0; border:1px solid #fcd34d; font-size:0.75rem; text-align:left; color:#555;">
+                            I dati inseriti saranno trattati in modo sicuro e non verranno mai condivisi per scopi
+                            commerciali. Servono esclusivamente per l'identificazione ai fini del servizio.
+                        </div>
+                        <label
+                            style="display:flex; align-items:flex-start; gap:10px; text-align:left; font-size:0.8rem; margin-bottom:15px; cursor:pointer;">
+                            <input type="checkbox" id="signup-privacy" required style="margin-top:2px;">
+                            <span>Accetto l'utilizzo dei dati al solo fine dell'iscrizione al servizio C.d.V.</span>
+                        </label>
+
                         <button type="submit" class="btn-primary"
                             style="background: var(--primary-dark)">Registrati</button>
                     </form>
@@ -599,13 +620,15 @@
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
             <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Piattaforma Aggiornata!</h3>
-            <p style="font-weight: bold; color: #555;">Versione v86</p>
+            <p style="font-weight: bold; color: #555;">Versione v87</p>
 
             <div
                 style="text-align: left; background: #f9fafb; padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e5e7eb;">
                 <p style="margin-bottom:8px"><b>Novità principali:</b></p>
                 <ul style="padding-left: 20px; color: #374151; line-height: 1.5;">
-                    <li>🛡️ <b>Privacy Stampa:</b> Migliorata la riservatezza nei registri PDF.</li>
+                    <li>📝 <b>Profilo Utente:</b> Per garantire la sicurezza, è ora obbligatorio inserire indirizzo e
+                        telefono.</li>
+                    <li>🛡️ <b>Privacy:</b> Migliorata la gestione del consenso dati.</li>
                     <li>⚡ <b>Performance:</b> Ottimizzazione database e sicurezza.</li>
                 </ul>
             </div>
@@ -733,6 +756,42 @@
         </div>
     </div>
 
+    <!-- MODALE COMPLETAMENTO PROFILO OBBLIGATORIO -->
+    <div id="modal-mandatory-profile" class="modal" style="z-index: 9999; background: rgba(0,0,0,0.95);">
+        <div class="modal-content" style="border-top: 5px solid var(--primary);">
+            <h3>⚠️ Dati Mancanti</h3>
+            <p style="color:#555; margin-bottom:15px; font-size:0.9rem;">
+                Per proseguire l'utilizzo della PWA, è necessario completare il tuo profilo con i dati mancanti.
+            </p>
+
+            <form onsubmit="event.preventDefault(); saveMandatoryProfile();">
+                <label>Indirizzo di Residenza *</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="mandatory-address" placeholder="Es. Via Roma" required style="flex:2">
+                    <input type="text" id="mandatory-civic" placeholder="N." required style="flex:1">
+                </div>
+
+                <label>Numero di Cellulare *</label>
+                <input type="tel" id="mandatory-phone" placeholder="Es. 333 1234567" required>
+
+                <!-- CONSENSO -->
+                <div
+                    style="background:#fffbeb; padding:10px; border-radius:6px; margin:15px 0; border:1px solid #fcd34d; font-size:0.75rem; text-align:left; color:#555; line-height:1.4;">
+                    🔒 <b>Sicurezza Dati:</b> I dati forniti saranno trattati in modo sicuro. Non verranno mai
+                    utilizzati per altri scopi se non l'identificazione ai fini della registrazione al servizio C.d.V.
+                </div>
+
+                <label
+                    style="display:flex; align-items:flex-start; gap:10px; text-align:left; font-size:0.8rem; margin-bottom:20px; cursor:pointer;">
+                    <input type="checkbox" id="mandatory-privacy" required style="margin-top:2px;">
+                    <span>Accetto l'utilizzo dei dati al solo fine dell'iscrizione al servizio.</span>
+                </label>
+
+                <button type="submit" class="btn-primary" style="width:100%;">SALVA E PROCEDI</button>
+            </form>
+        </div>
+    </div>
+
     <!-- MODALE OPZIONI STAMPA (ADMIN) -->
     <div id="modal-print-options" class="modal">
         <div class="modal-content">
@@ -769,7 +828,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="app.js?v=86"></script>
+    <script src="app.js?v=87"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     </script>

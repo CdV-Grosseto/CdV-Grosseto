@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v86';
+const APP_VERSION = 'v87';
 
 async function checkAppVersion() {
     try {
@@ -349,7 +349,15 @@ async function handleSignUp() {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
 
+    // NUOVI CAMPI
+    const address = document.getElementById('signup-address').value;
+    const civic = document.getElementById('signup-civic').value;
+    const phone = document.getElementById('signup-phone').value;
+    const privacy = document.getElementById('signup-privacy').checked;
+
     if (!name) return showMessage("Attenzione", "Inserisci Nome e Cognome", 'error');
+    if (!address || !civic || !phone) return showMessage("Attenzione", "Tutti i campi (Indirizzo, Civico, Telefono) sono obbligatori.", 'error');
+    if (!privacy) return showMessage("Attenzione", "Devi accettare il consenso privacy per registrarti.", 'error');
 
     const { data, error } = await supabaseClient.auth.signUp({
         email,
@@ -362,12 +370,55 @@ async function handleSignUp() {
     } else {
         if (data.user) {
             const { error: profileError } = await supabaseClient.from('profiles').upsert([
-                { id: data.user.id, role: 'utente', full_name: name, email: email }
+                {
+                    id: data.user.id,
+                    role: 'utente',
+                    full_name: name,
+                    email: email,
+                    address: address,
+                    civic_number: civic,
+                    phone: phone,
+                    privacy_accepted: true
+                }
             ]);
             if (profileError) console.warn("Errore upsert profilo:", profileError);
         }
         showMessage("Successo", "Registrazione completata! Ora puoi accedere.", 'success');
         toggleAuthMode('login');
+    }
+}
+
+async function saveMandatoryProfile() {
+    const address = document.getElementById('mandatory-address').value;
+    const civic = document.getElementById('mandatory-civic').value;
+    const phone = document.getElementById('mandatory-phone').value;
+    const privacy = document.getElementById('mandatory-privacy').checked;
+
+    if (!address || !civic || !phone) return showMessage("Attenzione", "Tutti i campi sono obbligatori.", 'error');
+    if (!privacy) return showMessage("Attenzione", "Devi accettare il consenso privacy.", 'error');
+
+    if (!currentUser) return;
+
+    const { error } = await supabaseClient.from('profiles').update({
+        address: address,
+        civic_number: civic,
+        phone: phone,
+        privacy_accepted: true
+    }).eq('id', currentUser.id);
+
+    if (error) {
+        showMessage("Errore", error.message, 'error');
+    } else {
+        // Aggiorna profilo locale e procedi
+        currentProfile.address = address;
+        currentProfile.civic_number = civic;
+        currentProfile.phone = phone;
+        currentProfile.privacy_accepted = true;
+
+        document.getElementById('modal-mandatory-profile').style.display = 'none';
+
+        // Rilancia la logica di successo login per inizializzare l'app
+        handleLoginSuccess(currentUser);
     }
 }
 
@@ -449,6 +500,20 @@ async function handleLoginSuccess(user) {
         return;
     }
     // -----------------------------------------
+
+    // --- CONTROLLO DATI OBBLIGATORI (MANDATORY PROFILE) ---
+    // Verifichiamo se mancano dati essenziali o il consenso privacy
+    if (!currentProfile.address || !currentProfile.civic_number || !currentProfile.phone || !currentProfile.privacy_accepted) {
+
+        // Precompila campi se ne abbiamo alcuni (es. phone da vecchi inserimenti)
+        if (currentProfile.phone) document.getElementById('mandatory-phone').value = currentProfile.phone;
+        if (currentProfile.address) document.getElementById('mandatory-address').value = currentProfile.address;
+
+        document.getElementById('modal-mandatory-profile').style.display = 'flex';
+        // Blocchiamo il caricamento ulteriore
+        return;
+    }
+    // ------------------------------------------------------
 
     loadGroups();
     setupRealtime(); // Avvia la sincronizzazione e la Presence
@@ -1808,6 +1873,13 @@ async function loadUsers() {
             emailDisplay = `<div class="email-display">📧 ${user.email || 'N/D'}</div>`;
         }
 
+        // NUOVO: VISUALIZZAZIONE INDIRIZZO (Richiesta Utente)
+        let addressDisplay = '';
+        if ((currentProfile.role === 'coord_generale' || currentProfile.role === 'coord_gruppo') && user.address) {
+            // Visualizza "Grosseto" fisso come richiesto dall'esempio
+            addressDisplay = `<div style="font-size:0.85rem; color:#4B5563; margin-top:2px; font-weight:500;">🏠 Grosseto ${user.address} ${user.civic_number || ''}</div>`;
+        }
+
         // --- PRESENCE STATUS DOT (Solo per Admin) ---
         let statusDot = '';
         if (currentProfile.role === 'coord_generale') {
@@ -1827,6 +1899,7 @@ async function loadUsers() {
                         </div>
                         ${emailDisplay}
                         <div style="font-size:0.8rem; margin-top:2px;">📞 ${user.phone || 'No tel'}</div>
+                        ${addressDisplay}
                         <div class="user-role">${user.role}</div>
                         <div style="font-size:0.9rem; color:${grp ? '#666' : '#d97706'}">${grp ? '📍 ' + grp.name : 'DA ASSEGNARE'}</div>
                     </div>
