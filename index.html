@@ -511,6 +511,16 @@
             <input type="text" id="edit-user-email" disabled style="background: #f0f0f0;">
             <label>Telefono (Modificabile)</label>
             <input type="text" id="edit-user-phone" placeholder="Inserisci Telefono">
+            <input type="text" id="edit-user-phone" placeholder="Inserisci Telefono">
+
+            <div id="admin-address-fields" style="display:none; margin-top:10px;">
+                <label>Indirizzo (Modificabile)</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="edit-user-address" placeholder="Via/Piazza" style="flex:2">
+                    <input type="text" id="edit-user-civic" placeholder="Civico" style="flex:1">
+                </div>
+            </div>
+
             <div id="super-admin-fields">
                 <div style="background:#fffbeb; padding:10px; border:1px solid #fcd34d; border-radius:8px; margin-bottom:15px; display:none"
                     id="admin-reset-pwd-box">
@@ -616,11 +626,11 @@
     </div>
 
     <!-- MODALE UPDATE INFO (Presentazione Novità) -->
-    <div id="modal-update-info" class="modal" style="z-index: 9999;">
+    <div id="modal-update-info" class="modal" style="z-index: 20000;">
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
             <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Piattaforma Aggiornata!</h3>
-            <p style="font-weight: bold; color: #555;">Versione v87</p>
+            <p style="font-weight: bold; color: #555;">Versione v89</p>
 
             <div
                 style="text-align: left; background: #f9fafb; padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e5e7eb;">
@@ -828,7 +838,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="app.js?v=87"></script>
+    <script src="app.js?v=89"></script>
     <script>
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     </script>

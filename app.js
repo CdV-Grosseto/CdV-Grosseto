@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v87';
+const APP_VERSION = 'v89';
 
 async function checkAppVersion() {
     try {
@@ -1929,10 +1929,18 @@ async function openEditUser(uid) {
     document.getElementById('edit-user-email').value = u.email || '';
     document.getElementById('edit-user-phone').value = u.phone || '';
 
+    // NUOVO: Popolamento campi indirizzo
+    document.getElementById('edit-user-address').value = u.address || '';
+    document.getElementById('edit-user-civic').value = u.civic_number || '';
+
     if (currentProfile.role === 'coord_generale') {
         document.getElementById('super-admin-fields').style.display = 'block';
         document.getElementById('admin-reset-pwd-box').style.display = 'block'; // Mostra box reset
         document.getElementById('coord-fields').style.display = 'none';
+
+        // MOSTRA CAMPI INDIRIZZO PER SUPER ADMIN
+        document.getElementById('admin-address-fields').style.display = 'block';
+
         const gs = document.getElementById('edit-user-group');
         gs.innerHTML = '<option value="">-- Nessun --</option>';
         availableGroups.forEach(g => {
@@ -1947,6 +1955,12 @@ async function openEditUser(uid) {
         document.getElementById('super-admin-fields').style.display = 'none';
         document.getElementById('admin-reset-pwd-box').style.display = 'none'; // Nascondi box reset
         document.getElementById('coord-fields').style.display = 'block';
+
+        // NASCONDI CAMPI INDIRIZZO PER COORD GRUPPO (se richesto che solo admin li veda modificabili)
+        // Ma l'utente ha detto "da parte dei coordinatori generali".
+        // Se volessimo lasciarlo anche a loro, basterebbe togliere questo none.
+        document.getElementById('admin-address-fields').style.display = 'none';
+
         document.getElementById('btn-save-user').onclick = saveUserChanges;
         document.getElementById('btn-save-user').style.display = 'block';
     }
@@ -1992,6 +2006,10 @@ async function saveUserChanges() {
     if (currentProfile.role === 'coord_generale') {
         updateData.role = document.getElementById('edit-user-role').value;
         updateData.group_id = document.getElementById('edit-user-group').value || null;
+
+        // SALVATAGGIO INDIRIZZO (Solo se admin)
+        updateData.address = document.getElementById('edit-user-address').value;
+        updateData.civic_number = document.getElementById('edit-user-civic').value;
     }
 
     const { error } = await supabaseClient.from('profiles').update(updateData).eq('id', uid);
