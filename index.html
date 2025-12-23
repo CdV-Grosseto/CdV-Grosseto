@@ -227,6 +227,7 @@
 
                 <button class="filter-chip" data-filter="sospetto" onclick="applyFilter('sospetto')">👁️
                     Sospetti</button>
+                <button class="filter-chip" onclick="applyFilter('furto')" data-filter="furto">🦹 Furti</button>
                 <button class="filter-chip" data-filter="degrado" onclick="applyFilter('degrado')">💡 Degrado</button>
                 <button class="filter-chip" data-filter="assistenza" onclick="applyFilter('assistenza')">🤝
                     Aiuto</button>
@@ -433,12 +434,18 @@
             </div>
             <label>Categoria</label>
             <div class="category-selector">
-                <button type="button" class="cat-btn selected" onclick="setCategory('sospetto', this)">
-                    <span class="material-icons">visibility</span> Sospetto
-                </button>
-                <button type="button" class="cat-btn" onclick="setCategory('degrado', this)">
-                    <span class="material-icons">broken_image</span> Degrado
-                </button>
+                <div class="cat-btn" onclick="setCategory('sospetto', this)">
+                    <span style="font-size:1.5rem">🕵️</span>
+                    <span>Sospetto</span>
+                </div>
+                <div class="cat-btn" onclick="setCategory('furto', this)">
+                    <span style="font-size:1.5rem">🦹</span>
+                    <span>Furto</span>
+                </div>
+                <div class="cat-btn" onclick="setCategory('degrado', this)">
+                    <span style="font-size:1.5rem">🗑️</span>
+                    <span>Degrado</span>
+                </div>
                 <button type="button" class="cat-btn" onclick="setCategory('assistenza', this)">
                     <span class="material-icons">volunteer_activism</span> Aiuto
                 </button>
@@ -511,7 +518,7 @@
             <input type="text" id="edit-user-email" disabled style="background: #f0f0f0;">
             <label>Telefono (Modificabile)</label>
             <input type="text" id="edit-user-phone" placeholder="Inserisci Telefono">
-            <input type="text" id="edit-user-phone" placeholder="Inserisci Telefono">
+
 
             <div id="admin-address-fields" style="display:none; margin-top:10px;">
                 <label>Indirizzo (Modificabile)</label>
@@ -605,6 +612,7 @@
                         <th>Gruppo</th>
                         <th>Tot</th>
                         <th>Sosp.</th>
+                        <th>Furti</th>
                         <th>Degr.</th>
                         <th>Aiuto</th>
                     </tr>
@@ -630,16 +638,15 @@
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
             <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Piattaforma Aggiornata!</h3>
-            <p style="font-weight: bold; color: #555;">Versione v90</p>
+            <p style="font-weight: bold; color: #555;">Versione v91</p>
 
             <div
                 style="text-align: left; background: #f9fafb; padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e5e7eb;">
                 <p style="margin-bottom:8px"><b>Novità principali:</b></p>
                 <ul style="padding-left: 20px; color: #374151; line-height: 1.5;">
-                    <li>🔔 <b>Notifiche Admin:</b> I coordinatori ricevono una notifica immediata ad ogni nuova
-                        registrazione.</li>
-                    <li>📝 <b>Profilo Utente:</b> Ottimizzazione dati profilo e sicurezza.</li>
-                    <li>⚡ <b>Performance:</b> Miglioramenti generali alla stabilità.</li>
+                    <li>🦹 <b>Nuova Categoria Furti:</b> Segnalazione dedicata con marker Blu.</li>
+                    <li>🔍 <b>Ricerca Intelligente:</b> Trova segnalazioni per "scippo", "tentato furto", ecc..</li>
+                    <li>📱 <b>Layout Migliorato:</b> Pulsanti ottimizzati per mobile.</li>
                 </ul>
             </div>
 

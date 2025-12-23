@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v90';
+const APP_VERSION = 'v91';
 
 async function checkAppVersion() {
     try {
@@ -127,7 +127,7 @@ const SYNONYM_GROUPS = [
     ['blu', 'azzurro', 'scuro', 'notte'],
     ['grigio', 'grigia', 'argento', 'silver', 'metallizzato'],
     ['targa', 'numero', 'lettere', 'targato', 'targata', 'inizia', 'finisce'],
-    ['rubare', 'furto', 'scassinare', 'ladro', 'ladri', 'rubato', 'rubata', 'topo', 'topi', 'intrusione'],
+    ['rubare', 'furto', 'scassinare', 'ladro', 'ladri', 'rubato', 'rubata', 'topo', 'topi', 'intrusione', 'scippo', 'rapina', 'ladruncoli', 'svaligiata', 'tentato', 'danneggiamento', 'spaccata', 'effrazione', 'violazione', 'forzatura', 'scasso'],
     ['cane', 'cani', 'animale', 'animali', 'guinzaglio'],
     ['droga', 'spaccio', 'sostanze', 'bustina', 'pusher', 'spacciatore', 'scambio'],
     ['scendere', 'sceso', 'scesi', 'uscire', 'uscito', 'montare'],
@@ -1089,10 +1089,20 @@ function renderMapMarkers() {
 
     const reports = getFilteredReports();
 
-    const getSvgIcon = (fillColor) => {
+    const getSvgIcon = (fillColor, category) => {
+        let pathD = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"; // Standard Pin
+
+        // ICONA FURTO (Maschera/Ladro style) - Un po' diversa
+        if (category === 'furto') {
+            // Usa un path diverso per il marker o aggiungi un simbolo dentro?
+            // Per semplicità mantengo il Pin ma cambio il simbolo interno se possibile, ma qui il path è unico.
+            // Usiamo il Pin standard ma BLU. Se volessimo cambiare la FORMA del pin sarebbe complesso.
+            // Manteniamo il pin standard (che ha colore variabile) per coerenza visiva.
+        }
+
         const svgHtml = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40">
-                <path fill="${fillColor}" stroke="#1F2937" stroke-width="2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                <path fill="${fillColor}" stroke="#1F2937" stroke-width="2" d="${pathD}"/>
             </svg>`;
 
         return L.divIcon({
@@ -1117,6 +1127,8 @@ function renderMapMarkers() {
                 color = (r.status === 'validata') ? '#006400' : '#90ee90';
             } else if (r.category === 'assistenza') {
                 color = (r.status === 'validata') ? '#c71585' : '#ffb6c1';
+            } else if (r.category === 'furto') {
+                color = (r.status === 'validata') ? '#1E40AF' : '#3B82F6'; // Blu Scuro / Blu
             } else if (r.category === 'emergenza') {
                 color = '#EF4444'; // Rosso emergenza
             }
@@ -1176,7 +1188,7 @@ function renderMapMarkers() {
             }
 
             // Marker standard per le altre categorie
-            const marker = L.marker(coords, { icon: getSvgIcon(color) });
+            const marker = L.marker(coords, { icon: getSvgIcon(color, r.category) });
             const canManage = currentProfile && (currentProfile.role === 'coord_generale' ||
                 (currentProfile.role === 'coord_gruppo' && r.group_id === currentProfile.group_id));
 
@@ -1291,7 +1303,11 @@ async function printReport(id) {
     const locationStr = coords ? `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}` : "N/D";
 
     doc.setFontSize(20);
-    doc.setTextColor(245, 158, 11);
+    // Colore Dinamico Intestazione
+    if (r.category === 'furto') doc.setTextColor(37, 99, 235); // Blue
+    else if (r.category === 'emergenza') doc.setTextColor(239, 68, 68); // Red
+    else doc.setTextColor(245, 158, 11); // Amber Default
+
     doc.text("C.d.V Grosseto - Dettaglio Segnalazione", 10, 20);
 
     doc.setFontSize(12);
@@ -2048,17 +2064,18 @@ async function openStatsModal() {
     const stats = {};
 
     availableGroups.forEach(g => {
-        stats[g.id] = { name: g.name, total: 0, sospetto: 0, degrado: 0, assistenza: 0 };
+        stats[g.id] = { name: g.name, total: 0, sospetto: 0, furto: 0, degrado: 0, assistenza: 0 };
     });
 
-    stats['null'] = { name: 'Generale', total: 0, sospetto: 0, degrado: 0, assistenza: 0 };
+    stats['null'] = { name: 'Generale', total: 0, sospetto: 0, furto: 0, degrado: 0, assistenza: 0 };
 
     allReportsCache.forEach(r => {
         const gid = r.group_id || 'null';
-        if (!stats[gid]) stats[gid] = { name: 'Sconosciuto', total: 0, sospetto: 0, degrado: 0, assistenza: 0 };
+        if (!stats[gid]) stats[gid] = { name: 'Sconosciuto', total: 0, sospetto: 0, furto: 0, degrado: 0, assistenza: 0 };
 
         stats[gid].total++;
         if (r.category === 'sospetto') stats[gid].sospetto++;
+        if (r.category === 'furto') stats[gid].furto++;
         if (r.category === 'degrado') stats[gid].degrado++;
         if (r.category === 'assistenza') stats[gid].assistenza++;
     });
@@ -2073,6 +2090,7 @@ async function openStatsModal() {
                 <td>${s.name}</td>
                 <td><b>${s.total}</b></td>
                 <td>${s.sospetto}</td>
+                <td style="color:#2563EB; font-weight:bold;">${s.furto}</td>
                 <td>${s.degrado}</td>
                 <td>${s.assistenza}</td>
             `;

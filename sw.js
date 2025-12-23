@@ -1,5 +1,5 @@
 // Aggiornato a v52 - inserita modifica segnalazione
-const CACHE_NAME = 'cdv-grosseto-v90';
+const CACHE_NAME = 'cdv-grosseto-v91';
 const ASSETS = [
   './',
   './index.html',

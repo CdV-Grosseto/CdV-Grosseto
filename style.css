@@ -573,6 +573,12 @@ select {
     display: flex;
     gap: 8px;
     margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+#btn-cat-emergency {
+    flex-basis: 100%;
+    margin-top: 5px;
 }
 
 .cat-btn {
@@ -625,6 +631,11 @@ select {
 
 .btn-danger {
     background: var(--danger);
+    color: white;
+}
+
+.badge.furto {
+    background-color: #2563EB;
     color: white;
 }
 
