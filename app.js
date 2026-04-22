@@ -7,7 +7,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const VAPID_PUBLIC_KEY = 'BBQI-AyZacTAcx78H5SLPEgnrgvyJLFGnwRv5bKakr9JisauagodVDxNUDB874FaLkmNuyB2sgzWQLxoqTkstJo';
 
 // --- AUTO-UPDATE CONFIGURATION ---
-const APP_VERSION = 'v92';
+const APP_VERSION = 'v93';
 
 async function checkAppVersion() {
     try {
@@ -1205,6 +1205,8 @@ function renderMapMarkers() {
                     <div style="font-size:0.7rem; color:#999; margin-top:5px">📍 ${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</div>
                     ${canManage && r.status === 'nuova' ?
                     `<button style="width:100%; margin-top:5px" class="btn-validate" onclick="updateReport('${r.id}', 'validata')">Convalida</button>` : ''}
+                    ${canManage ?
+                    `<button style="width:100%; margin-top:5px; background:#FCD34D; color:#1F2937; border:none; padding:5px; border-radius:5px; cursor:pointer;" onclick="openReportEditModal('${r.id}')">✏️ Implementa</button>` : ''}
                 </div>`;
             marker.bindPopup(popupContent);
             markersLayer.addLayer(marker);
@@ -1378,9 +1380,12 @@ function renderReportsList() {
                 `<button class="btn-small btn-validate" onclick="event.stopPropagation(); updateReport('${r.id}', 'validata')">✅ Convalida</button>` :
                 '';
 
+            const btnEdit = `<button class="btn-small" style="background:#FCD34D; color:#1F2937;" onclick="event.stopPropagation(); openReportEditModal('${r.id}')">✏️ Implementa</button>`;
+
             adminHtml = `
                 <div class="admin-controls">
                     ${btnValidate}
+                    ${btnEdit}
                     ${btnPrint}
                     ${btnArchive}
                     <button class="btn-small btn-delete" onclick="event.stopPropagation(); deleteReport('${r.id}')">🗑️ Elimina</button>
@@ -1693,6 +1698,46 @@ function deleteReport(id) {
     showConfirm("Elimina Segnalazione", "Questa azione è irreversibile.", async () => {
         await supabaseClient.from('reports').delete().eq('id', id);
     });
+}
+
+function openReportEditModal(id) {
+    const report = allReportsCache.find(r => r.id === id);
+    if (!report) return;
+    
+    document.getElementById('edit-report-id').value = id;
+    document.getElementById('edit-report-desc').value = ""; // Lasciamo vuoto per il nuovo testo
+    
+    document.getElementById('modal-report-edit').style.display = 'flex';
+}
+
+async function saveReportEdit() {
+    const id = document.getElementById('edit-report-id').value;
+    const addedText = document.getElementById('edit-report-desc').value.trim();
+    
+    if (!addedText) {
+        showMessage("Attenzione", "Inserisci il testo dell'aggiornamento.", 'info');
+        return;
+    }
+    
+    const report = allReportsCache.find(r => r.id === id);
+    if (!report) return;
+
+    const authorName = currentProfile ? currentProfile.full_name : "Coordinatore";
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    
+    const divider = `\n\n--- AGGIORNAMENTO DI ${authorName.toUpperCase()} IL ${dateStr} ALLE ${timeStr} ---\n`;
+    const newDescription = report.description + divider + addedText;
+    
+    const { error } = await supabaseClient.from('reports').update({ description: newDescription }).eq('id', id);
+    
+    if (error) {
+        showMessage("Errore", error.message, 'error');
+    } else {
+        showMessage("Successo", "Segnalazione aggiornata correttamente.", 'success');
+        closeModal('modal-report-edit');
+    }
 }
 
 // ================= 5. GESTIONE UTENTI & GRUPPI =================

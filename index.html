@@ -496,14 +496,14 @@
     <!-- MODALE MODIFICA REPORT (NUOVA) -->
     <div id="modal-report-edit" class="modal">
         <div class="modal-content">
-            <h3>✏️ Modifica Segnalazione</h3>
-            <p style="font-size:0.85rem; color:#666; margin-bottom:15px">Modifica il testo della segnalazione.</p>
+            <h3>✏️ Implementa Segnalazione</h3>
+            <p style="font-size:0.85rem; color:#666; margin-bottom:15px">Inserisci un aggiornamento per questa segnalazione. Il testo verrà accodato all'originale.</p>
             <input type="hidden" id="edit-report-id">
-            <textarea id="edit-report-desc" rows="5" style="width:100%; padding:10px;"></textarea>
+            <textarea id="edit-report-desc" rows="5" style="width:100%; padding:10px;" placeholder="Scrivi qui il nuovo testo..."></textarea>
 
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal('modal-report-edit')">Annulla</button>
-                <button class="btn-primary" onclick="saveReportEdit()">SALVA MODIFICHE</button>
+                <button class="btn-primary" onclick="saveReportEdit()">AGGIUNGI TESTO</button>
             </div>
         </div>
     </div>
@@ -638,15 +638,14 @@
         <div class="modal-content" style="max-width: 500px; text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 10px;">🚀</div>
             <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Piattaforma Aggiornata!</h3>
-            <p style="font-weight: bold; color: #555;">Versione v92</p>
+            <p style="font-weight: bold; color: #555;">Versione v93</p>
 
             <div
                 style="text-align: left; background: #f9fafb; padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px solid #e5e7eb;">
                 <p style="margin-bottom:8px"><b>Novità principali:</b></p>
                 <ul style="padding-left: 20px; color: #374151; line-height: 1.5;">
-                    <li>🦹 <b>Nuova Categoria Furti:</b> Segnalazione dedicata con marker Blu.</li>
-                    <li>🔍 <b>Ricerca Intelligente:</b> Trova segnalazioni per "scippo", "tentato furto", ecc..</li>
-                    <li>📱 <b>Layout Migliorato:</b> Pulsanti ottimizzati per mobile.</li>
+                    <li>📝 <b>Integrazione Segnalazioni:</b> I coordinatori possono ora aggiungere nuovi dettagli a una segnalazione esistente!</li>
+                    <li>🖨️ <b>Stampe e PDF Ottimizzate:</b> Gli aggiornamenti delle segnalazioni mantengono il layout ottimale durante l'export in PDF.</li>
                 </ul>
             </div>
 
