@@ -1075,6 +1075,11 @@ function parseCoordinates(r) {
     return null;
 }
 
+function formatDescriptionForHtml(desc) {
+    if (!desc) return "";
+    return desc.replace(/(--- AGGIORNAMENTO DI .*? ---)/g, '<span style="color: #d97706; font-weight: bold; font-size: 0.85rem; display: block; margin-top: 8px; margin-bottom: 4px;">$1</span>');
+}
+
 function renderMapMarkers() {
     if (!map || !markersLayer) return;
     markersLayer.clearLayers();
@@ -1167,7 +1172,7 @@ function renderMapMarkers() {
                         <small>${new Date(r.created_at).toLocaleString('it-IT')}</small><br>
                         ${timeRemainingStr}
                         <hr style="border-top:1px solid #ffcccc; margin:5px 0;">
-                        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">"${r.description}"</div>
+                        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px; white-space: pre-wrap;">"${formatDescriptionForHtml(r.description)}"</div>
                         <div style="font-size:0.8rem;">Emessa da: ${authorName}</div>
                         ${(currentProfile.role === 'coord_generale') ?
                         `<button style="width:100%; margin-top:5px; background:#666; color:white; border:none; padding:5px; cursor:pointer;" onclick="archiveReport('${r.id}')">Chiudi Allerta</button>` : ''}
@@ -1201,7 +1206,7 @@ function renderMapMarkers() {
                     <div style="background:#f3f4f6; padding:4px; margin:5px 0; border-radius:4px; font-size:0.8rem;">
                         👤 <b>${authorName}</b>
                     </div>
-                    <p style="margin:5px 0; font-style:italic">"${r.description}"</p>
+                    <p style="margin:5px 0; font-style:italic; white-space: pre-wrap;">"${formatDescriptionForHtml(r.description)}"</p>
                     <div style="font-size:0.7rem; color:#999; margin-top:5px">📍 ${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</div>
                     ${canManage && r.status === 'nuova' ?
                     `<button style="width:100%; margin-top:5px" class="btn-validate" onclick="updateReport('${r.id}', 'validata')">Convalida</button>` : ''}
@@ -1249,8 +1254,8 @@ function loadArchive() {
                 <div style="font-size:0.8rem; color:#4b5563; margin-bottom:4px;">
                     👤 <b>${authorName}</b> | 📍 <i>${groupName}</i>
                 </div>
-                <div style="font-size:0.9rem; color:#333; background:#f9fafb; padding:8px; border-radius:4px; margin-top:5px; border:1px solid #eee;">
-                    ${r.description}
+                <div style="font-size:0.9rem; color:#333; background:#f9fafb; padding:8px; border-radius:4px; margin-top:5px; border:1px solid #eee; white-space: pre-wrap;">
+                    ${formatDescriptionForHtml(r.description)}
                 </div>
             </div>
             <div style="display:flex; flex-direction:column; gap:5px; justify-content:center;">
@@ -1432,7 +1437,7 @@ function renderReportsList() {
             </div>
             ${groupName}
             <div style="font-size:0.8rem; font-weight:bold; color:#4b5563; margin-bottom:4px;">👤 ${authorName}</div>
-            <div class="report-title">${r.description}</div>
+            <div class="report-title" style="white-space: pre-wrap;">${formatDescriptionForHtml(r.description)}</div>
             <div class="report-badges">
                 <span class="badge ${r.category}">${r.category}</span>
                 <button class="btn-whatsapp" onclick="event.stopPropagation(); shareReport('${r.id}')">
